@@ -1,0 +1,10 @@
+proxy:
+  image: jwilder/nginx-proxy
+  ports:
+    - "80:80"
+  # use external file so can generate it from variables
+  env_file:
+    - proxy.env
+  # SSL - TODO
+  volumes:
+    - "/tmp/docker-certs:/tmp/docker-certs"
