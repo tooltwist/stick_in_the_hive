@@ -37,6 +37,9 @@ function defineApp {
 	done
 	echo "${BLUE}Github path: ${RED}\c"
 	read path
+	echo "${BLUE}Branch (master): ${RED}\c"
+	read branch
+	[ -z "${branch}" ] && branch="master"
 	echo "${BLUE}\ctec"
 
 	# Clone the repository as a new app
@@ -45,7 +48,7 @@ function defineApp {
 	(
 		cd apps
 		git clone ${path} ${name}
-		echo git clone ${path} ${name}
+		echo git clone ${path} -b ${branch} ${name}
 		rv=$?
 		echo Exit status is $rv
 	)
@@ -148,6 +151,8 @@ function initCLI {
 	o=$(git remote -v)
 	repo=$(echo ${o} | sed 's!origin.\(.*\).(fetch).*!\1!')
 	echo repo is ${repo}.
+	branch=$(git status | grep '^On branch ' | sed 's!On branch !!')
+	echo branch is ${branch}
 
 	# Initialize tooltwist
 	(
@@ -245,20 +250,22 @@ function doBuild {
 	(
 		echo '$ cd deploy/docker'
 		cd deploy/docker
-		echo "${N}\n"
+		echo "${RED}cd" `pwd` "${BLUE}"
 		trap true SIGINT
-		echo '$ tooltwist -n docker'
-		echo '$ eval $(docker-machine env default)'
-		eval $(docker-machine env default)
-		echo "${RED}"
+		echo "${RED}$ eval $(docker-machine env default)${BLUE}"
+		        eval $(docker-machine env default)
 		env | grep DOCKER
-		
+
+		echo "${RED}$ tooltwist -n docker"
 		echo "${N}"
 		tooltwist docker
 		trap - SIGINT
-		echo "${N}\n"
+		echo "${BLUE}\n"
 		
-		docker images
+		# Display the images we now have
+		echo "${RED}$ docker images${GREEN}"
+		              docker images
+		echo "${BLUE}"
 	)
 }
 
@@ -352,18 +359,26 @@ function pushToDockerHub {
 	echo ${N}
 	
 	# Get the tag
-	echo "Will push as tooltwist/${app}"
-	echo "What tag should be used? \n"
-	read ans
+	echo "${BLUE}What tag should be used? ${RED}\c"
+	read tag
 	
-	if [ ! -z "${ans}" ] ; then
-		
-		echo NOT PUSHING YET
+	if [ -z "${tag}" ] ; then
+		echo "${RED}No tag provided${BLUE}"
+		askEnter
+		return
 	fi
+	echo "${BLUE}Will push as tooltwist/${app}"
+	
+	# Tag the image
 	echo ""
+	echo "${RED}$ docker tag ${app}-image tooltwist/${app}:${tag}${GREEN}"
+	              docker tag ${app}-image tooltwist/${app}:${tag}			
+	
+	# Push to Dockerhub		
 	echo ""
-	echo ""
-	echo ""
+	echo "${RED}$ docker push tooltwist/${app}:${tag}${GREEN}"
+	              docker push tooltwist/${app}:${tag}
+	echo "${BLUE}"
 }
 
 #
@@ -381,6 +396,7 @@ function tooltwistAppMenu {
 	
 	
 	while true ; do
+		echo "${BLUE}"
 		echo "______________________________________________________"
 		echo ""
 		echo "	      TOOLTWIST APPLICATION ${app}"
@@ -394,32 +410,31 @@ function tooltwistAppMenu {
 		haveConf=N
 
 		if [ -e deploy/docker/tooltwist.js ] ; then
-			echo Found tooltwist.js
+#			echo Found tooltwist.js
 			haveConf=Y
 
 			# See if we have a build script
 			[ -e deploy/docker/build.sh ] && createBuildForCLI ${app}
 			mayBuild=Y
 		else
-			echo Missing tooltwist.js
+#			echo Missing tooltwist.js
 			mayInitCLI=Y
 		fi
 		
 		
-		cInit=${D}; [ ${mayInitCLI} == 'Y' ] && cInit=${B};
-		cEdit=${D}; [ ${haveConf} == 'Y' ] && cEdit=${N};
-		cRun=${D}; [ ${haveConf} == 'Y' ] && cRun=${N};
-		cBuild=${D}; [ ${mayBuild} == 'Y' ] && cBuild=${B};
+		cInit=${D}; [ ${mayInitCLI} == 'Y' ] && cInit=${GREEN};
+		cEdit=${D}; [ ${haveConf} == 'Y' ] && cEdit=${BLUE};
+		cRun=${D}; [ ${haveConf} == 'Y' ] && cRun=${BLUE};
+		cBuild=${D}; [ ${mayBuild} == 'Y' ] && cBuild=${BLUE};
 		
 		
 		# Initialise the build with ToolTwist CLI
-		
 		echo "	Create:"
-		echo "	  ${cInit}1. Initialise ToolTwist CLI${N}"
-		echo "	  ${cEdit}2. Edit toolTwist.js${N}"
-		echo "	  ${cRun}3. Run Designer${N}"
-		echo "	  ${cBuild}4. Build Docker image${N}"
-		echo "	  ${N}5. Shell in docker directory${N}"
+		echo "	  ${cInit}1. Initialise ToolTwist CLI${BLUE}"
+		echo "	  ${cEdit}2. Edit toolTwist.js${BLUE}"
+		echo "	  ${cRun}3. Run Designer${BLUE}"
+		echo "	  ${cBuild}4. Build Docker image${BLUE}"
+		echo "	  ${BLUE}5. Shell in docker directory${BLUE}"
 		echo ""
 
 
@@ -600,7 +615,7 @@ function maintainSwarms {
 		
 END
 	
-		echo "	${BLUE}Enter selection: ${RED}\c"
+		echo "	${BLUE}Swarm name or selection: ${RED}\c"
 		read ans
 		echo "${N}\c"
 	
@@ -767,10 +782,13 @@ function maintainSingleSwarm {
 	  3. Start proxy
 	  4. Stop proxy
 	  5. Restart proxy
+	  6. View proxy config
+	  7. View proxy log
 	  
-	  6. Start application
-	  7. Stop application
-	  8. Restart application
+	  8. Start application
+	  9. Stop application
+	  10. Restart application
+	  11. Remove application
   
 	  s. Shell
 	  f. Finish with this menu
@@ -798,13 +816,22 @@ END
 				restartProxy ${swarm}
 				;;
 			6)
-				startApp ${swarm} ${ans} 'up -d'
+				showProxyConfig ${swarm}
 				;;
 			7)
-				startApp ${swarm} ${ans} stop
+				followProxyLog ${swarm}
 				;;
 			8)
+				startApp ${swarm} ${ans} 'up -d'
+				;;
+			9)
+				startApp ${swarm} ${ans} stop
+				;;
+			10)
 				startApp ${swarm} ${ans} restart
+				;;
+			11)
+				startApp ${swarm} ${ans} rm
 				;;
 			s)
 				swarmShell ${swarm}
@@ -836,15 +863,17 @@ function startProxy {
 
 		# Set the environment
 		echo ''
-		echo '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
+		echo "${RED}$ eval \"$(docker-machine env --swarm '${swarm}'-swarm-master)\"${BLUE}"
 		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 
 		# Copy certificates to the proxy server
+		echo ""
 		echo >&2 "Copying TLS config to swarm-proxy"
-		echo '$ docker-machine scp -r "$DOCKER_CERT_PATH" '${swarm}'-swarm-proxy:/tmp/docker-certs'
+		echo "$ docker-machine scp -r \"$DOCKER_CERT_PATH\" ${swarm}-swarm-proxy:/tmp/docker-certs${BLUE}"
 		docker-machine scp -r "$DOCKER_CERT_PATH" ${swarm}-swarm-proxy:/tmp/docker-certs
 	
 		# Prepare the environment
+		echo ""
 		echo >&2 "Prepare environment file for Compose:"
 		cat <<EOF | tee proxy.env >&2
 DOCKER_TLS_VERIFY=1
@@ -855,12 +884,12 @@ EOF
 		echo ""
 		
 		# Start the nginx container, and limit it to one instance
-		echo >&2 "Starting services via Docker Compose"
+#		echo >&2 "Starting services via Docker Compose"
 		echo ''
-		echo '$ docker-compose -f docker-production-swarm-proxy.yml up -d'
+		echo "${RED}$ docker-compose -f docker-production-swarm-proxy.yml up -d${BLUE}"
 		docker-compose -f docker-production-swarm-proxy.yml up -d
 		echo ''
-		echo '$ docker-compose -f docker-production-swarm-proxy.yml scale proxy=1'
+		echo "${RED}$ docker-compose -f docker-production-swarm-proxy.yml scale proxy=1${BLUE}"
 		docker-compose -f docker-production-swarm-proxy.yml scale proxy=1
 	)
 }
@@ -937,6 +966,52 @@ EOF
 	)
 }
 
+function showProxyConfig {
+	swarm=$1
+
+	# Get the proxy container ID
+	proxyId=$(docker ps | grep -e "t4-swarm-proxy.*_proxy_1" | sed 's/ .*//')
+	if [ -z "${proxyId}" ] ; then
+		echo ""
+		echo "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
+		echo ""
+		askEnter
+		return
+	fi
+	echo "${BLUE}"
+	echo "_____________________________________________________________________________${N}"
+	echo "$ docker exec ${proxyId} /bin/bash -c \"cat /etc/nginx/conf.d/default.conf\""
+	        docker exec ${proxyId} /bin/bash -c "cat /etc/nginx/conf.d/default.conf"
+	echo "${BLUE}"
+}
+
+function followProxyLog {
+	swarm=$1
+	
+
+	# Get the proxy container ID
+	proxyId=$(docker ps | grep -e "t4-swarm-proxy.*_proxy_1" | sed 's/ .*//')
+	if [ -z "${proxyId}" ] ; then
+		echo ""
+		echo "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
+		echo ""
+		askEnter
+		return
+	fi
+	echo "Proxy Id is ${proxyId}"
+	
+	echo "${GREEN}Press Ctrl-C when you are finished viewing the logs${N}"
+	echo ""
+	askEnter
+	
+	trap true SIGINT
+	clear
+	echo "$ docker logs -f ${proxyId}"
+	        docker logs -f ${proxyId}
+	trap - SIGINT
+	echo "${BLUE}"
+}
+
 function listApps {
 	swarm=$1
 	
@@ -966,17 +1041,31 @@ function startApp {
 	app=$2
 	op=$3
 	clear
+	case ${op} in
+	start)
+		label="Start"
+		;;
+	stop)
+		label="Stop"
+		;;
+	restart)
+		label="Restart"
+		;;
+	rm)
+		label="Remove"
+		;;
+	esac
 	echo "${BLUE}"
 	echo ""
-	echo " Start Application"
-	echo "__________________"
+	echo " ${label} Application"
+	echo "____________________"
 	
 	# Ask the app name
 	listApps ${swarm}
 	
 #	app=askApp
 	echo ""
-	echo "Which application to start? \c"
+	echo "Which application to ${label}? \c"
 	read ans
 	
 	# Check the application exists
@@ -985,7 +1074,7 @@ function startApp {
 		echo checking ${n}
 		base=`basename ${n}`
 		if echo ${base} | grep "${ans}" ; then
-			echo found
+#			echo found
 			app=${base}
 			cnt=`expr $cnt + 1`
 		fi
@@ -1004,7 +1093,7 @@ function startApp {
 		echo "Press ENTER to continue: \c"
 		return
 	fi
-	echo app is ${app}
+	echo "${RED}Will ${label} ${app}${BLUE}"
 	
 	(
 		cd swarms/${swarm}/${app}
@@ -1050,7 +1139,7 @@ EOF
 		echo ''
 		echo '$ docker-compose '${op}
 		        docker-compose ${op}
-		if [ ${op} == 'start' ] ; then
+		if [ "${op}" == 'start' ] ; then
 			echo ''
 			echo '$ docker-compose scale app=1'
 			        docker-compose scale app=1
@@ -1078,14 +1167,33 @@ function askEnter {
 #
 
 # Set the environment
-echo Checking environment variables to access swarm
-eval $(docker-machine env --swarm swarm-masterz)
+#echo Checking environment variables to access swarm
+#eval $(docker-machine env --swarm swarm-masterz)
+echo "${RED}Initial environment:"
 env | grep DOCKER
+echo "${N}"
 
 echo Checking existing swarm names
 getSwarmNames
 echo done.
 echo ''
+
+if [ ! -z ${1} ] ; then
+	case ${1} in
+	"--swarms" )
+		clear
+#		echo maintain swarms
+		maintainSwarms
+		exit 0
+		;;
+	*)
+		echo "${RED}Unknown parameter: ${1}"
+		echo "usage: ${0} [--swarms]"
+		echo "${N}"
+		exit 1
+		;;
+	esac
+fi
 
 # Check we have the required directories
 mkdir -p apps
@@ -1114,11 +1222,11 @@ Commands:
   1. Define new application.
   2. Maintain swarms.
   s. Shell
-  q) Quit
+  q. Quit
 END
 
 	echo ''
-	echo 'Enter application name or a menu selection: \c'
+	echo 'Enter application name or selection: \c'
 	read ans
 
 	case "${ans}" in
