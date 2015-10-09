@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 #	Script for creating a Docker swarm
 #
@@ -7,7 +7,9 @@
 #http://bitmote.com/index.php?post/2012/11/19/Using-ANSI-Color-Codes-to-Colorize-Your-Bash-Prompt-on-Linux
 B="\033[1m"
 D="\033[0;37m"
-N="\033[m"
+#N="\033[m"
+N="\033[0;34m"
+BLACK="\033[m"
 RED="\033[0;31m"
 BLUE="\033[0;34m"
 AQUA="\033[0;36m"
@@ -15,44 +17,43 @@ GREEN="\033[0;32m"
 PURPLE="\033[0;35m"
 ORANGE="\033[1;33m"
 
-
 function defineApp {
 	clear
-	echo ${BLUE}
-	echo ""
-	echo Define an application
-	echo '____________________'
-	echo ''
+	echo1 ${BLUE}
+	echo1 ""
+	echo1 Define an application
+	echo1 '____________________'
+	echo1 ''
 
 	# Get a unique app name
 	name=""
 	while [ -z "${name}" ] ; do
-		echo "${BLUE}App name: ${RED}\c"
+		echon "${BLUE}App name: ${RED}"
 		read name
-		echo "${BLUE}\c"
+		echon "${BLUE}"
 		if [ -e apps/${name} ] ; then
-			echo "Name is already used"
+			echo1 "Name is already used"
 			name=""
 		fi
 	done
-	echo "${BLUE}Github path: ${RED}\c"
+	echon "${BLUE}Github path: ${RED}"
 	read path
-	echo "${BLUE}Branch (master): ${RED}\c"
+	echon "${BLUE}Branch (master): ${RED}"
 	read branch
 	[ -z "${branch}" ] && branch="master"
-	echo "${BLUE}\ctec"
+	echon "${BLUE}"
 
 	# Clone the repository as a new app
-	echo ''
-	echo "Cloning repository:"
+	echo1 ''
+	echo1 "Cloning repository:"
 	(
 		cd apps
 		git clone ${path} ${name}
-		echo git clone ${path} -b ${branch} ${name}
+		echo1 git clone ${path} -b ${branch} ${name}
 		rv=$?
-		echo Exit status is $rv
+		echo1 Exit status is $rv
 	)
-	echo ${N}
+	echo1 ${N}
 }
 
 #
@@ -63,24 +64,24 @@ function swarmPS {
 	swarm=$1
 	
 	(
-		echo ${BLUE}
+		echo1 ${BLUE}
 		clear
-		echo "Containers in Swarm ${swarm}"
-		echo "____________________________"
-		echo ""
-		echo ""
-		echo '$ eval $(docker-machine env --swarm '${swarm}'-swarm-master)'
+		echo1 "Containers in Swarm ${swarm}"
+		echo1 "____________________________"
+		echo1 ""
+		echo1 ""
+		echo1 '$ eval $(docker-machine env --swarm '${swarm}'-swarm-master)'
 		eval $(docker-machine env --swarm ${swarm}-swarm-master)
 		env | grep DOCKER
-		echo ""
-		echo ${GREEN}
+		echo1 ""
+		echo1 ${GREEN}
 		docker ps
 #		docker ps | grep -v jwilder/nginx-proxy
-		echo ${N}
-		echo ""
-		echo ""
-		echo ""
-		echo ""
+		echo1 ${N}
+		echo1 ""
+		echo1 ""
+		echo1 ""
+		echo1 ""
 	)
 }
 
@@ -92,24 +93,19 @@ function swarmInfo {
 	swarm=$1
 	
 	(
-		echo ${BLUE}
+		echo1 ${BLUE}
 		clear
-		echo "Containers in Swarm ${swarm}"
-		echo "____________________________"
-		echo ""
-		echo ""
-		echo '$ eval $(docker-machine env --swarm '${swarm}'-swarm-master)'
-		eval $(docker-machine env --swarm ${swarm}-swarm-master)
+		echo1 "Info for Swarm ${swarm}"
+		echo1 "____________________________"
+		echo1 ""
+		echo -e "${RED}$ eval \"$(docker-machine env --swarm ${swarm}-swarm-master)\"${BLUE}"
+		                 eval "(docker-machine env --swarm ${swarm}-swarm-master)"
 		env | grep DOCKER
 		echo ""
-		echo '$ docker info'
-		echo ${GREEN}
+		echo -e "${RED}$ docker info"
+		echo -e "${GREEN}"
 		        docker info
-		echo ${N}
-		echo ""
-		echo ""
-		echo ""
-		echo ""
+		echo -e "${N}"
 	)
 }
 
@@ -117,19 +113,19 @@ function swarmInfo {
 #	Create an extra swarm mode
 #
 function addSwarmNode {
-	echo ""
-	echo ""
-	echo ""
-	echo ""
-	echo ""
-	echo Sorry, not adding nodes yet.
-	echo ""
-	echo ""
-	echo ""
-	echo ""
-	echo ""
-	echo ""
-	echo "Press Enter to continue: \c"
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 Sorry, not adding nodes yet.
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echon "Press Enter to continue: "
 	read ans
 }
 
@@ -140,29 +136,29 @@ function addSwarmNode {
 #
 function initCLI {
 	app=$1
-	echo ${BLUE}
+	echo1 ${BLUE}
 	clear
-	echo 'Init ToolTwist CLI in Docker mode'
-	echo '_________________________________'
-	echo ''
+	echo1 'Init ToolTwist CLI in Docker mode'
+	echo1 '_________________________________'
+	echo1 ''
 	
 	# Get the repo name
-	echo '$ git remote -v'
+	echo1 '$ git remote -v'
 	o=$(git remote -v)
-	repo=$(echo ${o} | sed 's!origin.\(.*\).(fetch).*!\1!')
-	echo repo is ${repo}.
+	repo=$(echo1 ${o} | sed 's!origin.\(.*\).(fetch).*!\1!')
+	echo1 repo is ${repo}.
 	branch=$(git status | grep '^On branch ' | sed 's!On branch !!')
-	echo branch is ${branch}
+	echo1 branch is ${branch}
 
 	# Initialize tooltwist
 	(
 		mkdir -p deploy/docker
-		echo '$ cd deploy/docker'
+		echo1 '$ cd deploy/docker'
 		cd deploy/docker
-		echo '$ tooltwist init docker'
-		echo ${GREEN}
+		echo1 '$ tooltwist init docker'
+		echo1 ${GREEN}
 		tooltwist init docker
-		echo ${BLUE}
+		echo1 ${BLUE}
 		
 		# Patch the config file
 		sed -i '' 's!"name" : "ttdemo"!"name" : "'${app}'"!' tooltwist.js
@@ -172,16 +168,16 @@ function initCLI {
 	
 	#	Create a build script
 	createBuildForCLI
-	echo ${N}
+	echo1 ${N}
 }
 
 #
 #	Create a build.sh to start 'tooltwist docker'
 #
 function createBuildForCLI {
-	echo 'Creating build.sh...'
-	echo '#!/bin/bash' > deploy/docker/build.sh
-	echo 'tooltwist docker' >> deploy/docker/build.sh
+	echo1 'Creating build.sh...'
+	echo1 '#!/bin/bash' > deploy/docker/build.sh
+	echo1 'tooltwist docker' >> deploy/docker/build.sh
 	chmod +x deploy/docker/build.sh
 }
 
@@ -198,35 +194,35 @@ function editTooltwistJs {
 #
 function runDesigner {
 	app=$1
-	echo ${BLUE}
+	echo1 ${BLUE}
 	clear
-	echo 'Run ToolTwist Designer'
-	echo '______________________'
-	echo ''
+	echo1 'Run ToolTwist Designer'
+	echo1 '______________________'
+	echo1 ''
 	
 	# Use the project as it's own webdesign
-#	echo "$ mkdir -p deploy/docker/.tooltwist/webdesign-projects"
+#	echo1 "$ mkdir -p deploy/docker/.tooltwist/webdesign-projects"
 #	mkdir -p deploy/docker/.tooltwist/webdesign-projects
-	echo "$ rm -f deploy/docker/.tooltwist/webdesign-projects/${app}"
+	echo1 "$ rm -f deploy/docker/.tooltwist/webdesign-projects/${app}"
 	rm -rf deploy/docker/.tooltwist/webdesign-projects/${app}
 #	here=`pwd`
-#	echo "$ ln -s ${here} deploy/docker/.tooltwist/webdesign-projects/${app}"
+#	echo1 "$ ln -s ${here} deploy/docker/.tooltwist/webdesign-projects/${app}"
 #	ln -s ${here} deploy/docker/.tooltwist/webdesign-projects/${app}
 	
 	# Run the Designer
 	(
-		echo ''
-		echo "${RED}When you finish, press Ctrl-C${BLUE}"
-		echo ''
+		echo1 ''
+		echo1 "${RED}When you finish, press Ctrl-C${BLUE}"
+		echo1 ''
 
-		echo '$ cd deploy/docker'
+		echo1 '$ cd deploy/docker'
 		cd deploy/docker
-		echo '$ tooltwist designer'
-		echo "${GREEN}\n"
+		echo1 '$ tooltwist designer'
+		echo1 "${GREEN}\n"
 		trap true SIGINT
 		tooltwist designer
 		trap - SIGINT
-		echo "${N}\n"
+		echo1 "${N}\n"
 	)
 }
 
@@ -235,37 +231,37 @@ function runDesigner {
 #
 function doBuild {
 	app=$1
-	echo ${BLUE}
+	echo1 ${BLUE}
 	clear
-	echo 'Build Docker image'
-	echo '__________________'
-	echo ''
+	echo1 'Build Docker image'
+	echo1 '__________________'
+	echo1 ''
 	
 	# Use the project as it's own webdesign
-#	echo "$ mkdir -p deploy/docker/.tooltwist/webdesign-projects"
+#	echo1 "$ mkdir -p deploy/docker/.tooltwist/webdesign-projects"
 #	mkdir -p deploy/docker/.tooltwist/webdesign-projects
-#	echo "$ rm -f deploy/docker/.tooltwist/webdesign-projects/${app}"
+#	echo1 "$ rm -f deploy/docker/.tooltwist/webdesign-projects/${app}"
 #	rm -rf deploy/docker/.tooltwist/webdesign-projects/${app}
 	
 	(
-		echo '$ cd deploy/docker'
+		echo1 '$ cd deploy/docker'
 		cd deploy/docker
-		echo "${RED}cd" `pwd` "${BLUE}"
+		echo1 "${RED}cd" `pwd` "${BLUE}"
 		trap true SIGINT
-		echo "${RED}$ eval $(docker-machine env default)${BLUE}"
+		echo1 "${RED}$ eval $(docker-machine env default)${BLUE}"
 		        eval $(docker-machine env default)
 		env | grep DOCKER
 
-		echo "${RED}$ tooltwist -n docker"
-		echo "${N}"
+		echo1 "${RED}$ tooltwist -n docker"
+		echo1 "${N}"
 		tooltwist docker
 		trap - SIGINT
-		echo "${BLUE}\n"
+		echo1 "${BLUE}\n"
 		
 		# Display the images we now have
-		echo "${RED}$ docker images${GREEN}"
+		echo1 "${RED}$ docker images${GREEN}"
 		              docker images
-		echo "${BLUE}"
+		echo1 "${BLUE}"
 	)
 }
 
@@ -275,11 +271,13 @@ function doBuild {
 function appDockerDirShell {
 	app=$1
 	(
-		echo ''
-		echo 'When you finish, press Ctrl-D'
-		echo ''
+		echo1 ''
+		echo1 'When you finish, press Ctrl-D'
+		echo -e ${BLACK}
 		cd deploy/docker
-		/bin/bash --login
+		/bin/bash
+		echo -e ${BLUE}
+		clear
 	)
 	
 }
@@ -290,10 +288,14 @@ function appDockerDirShell {
 function appShell {
 	app=$1
 	(
-		echo ''
-		echo 'When you finish, press Ctrl-D'
-		echo ''
-		/bin/bash --login
+		echo1 ''
+		echo1 'When you finish, press Ctrl-D'
+		echo1 ''
+		echo -e ${BLACK}
+		/bin/bash
+		echoc blue
+		echo -e ${BLUE}
+		clear
 	)
 	
 }
@@ -304,11 +306,14 @@ function appShell {
 function swarmShell {
 	swarm=$1
 	(
-		echo ''
-		echo 'When you finish, press Ctrl-D'
-		echo ''
+		echo1 ''
+		echo1 'When you finish, press Ctrl-D'
+		echo1 ''
+		echo -e ${BLACK}
 		cd swarms/$swarm
-		/bin/bash --login
+		/bin/bash
+		echo -e ${BLUE}
+		clear
 	)
 	
 }
@@ -318,17 +323,18 @@ function swarmShell {
 #
 function viewLocalImage {
 	app=$1
-	echo ${GREEN}
+	echo1 ${GREEN}
 	clear
-	echo 'Local Images'
-	echo '____________'
-	echo ''
-	docker $(docker-machine config default) images | grep -e 'REPOSITORY' -e "${app}"
-	echo ${N}
-	echo ""
-	echo ""
-	echo ""
-	echo ""
+	echo1 'Local Images'
+	echo1 '____________'
+	echo1 ''
+	#docker $(docker-machine config default) images | grep -e 'REPOSITORY' -e "${app}"
+	docker images | grep -e 'REPOSITORY' -e "${app}"
+	echo1 ${N}
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 ""
 }
 
 #
@@ -336,17 +342,17 @@ function viewLocalImage {
 #
 function viewDockerHubImage {
 	app=$1
-	echo ${ORANGE}
+	echo1 ${ORANGE}
 	clear
-	echo 'Images at Docker Hub'
-	echo '____________________'
-	echo ''
+	echo1 'Images at Docker Hub'
+	echo1 '____________________'
+	echo1 ''
 	docker $(docker-machine config default) search tooltwist/${app}
-	echo ${N}
-	echo ""
-	echo ""
-	echo ""
-	echo ""
+	echo1 ${N}
+	echo1 ""
+	echo1 ""
+	echo1 ""
+	echo1 ""
 }
 
 #
@@ -354,31 +360,31 @@ function viewDockerHubImage {
 #
 function pushToDockerHub {
 	app=$1
-	echo ${GREEN}
+	echo1 ${GREEN}
 	docker $(docker-machine config default) images | grep -e 'REPOSITORY' -e "${app}"
-	echo ${N}
+	echo1 ${N}
 	
 	# Get the tag
-	echo "${BLUE}What tag should be used? ${RED}\c"
+	echon "${BLUE}What tag should be used? ${RED}"
 	read tag
 	
 	if [ -z "${tag}" ] ; then
-		echo "${RED}No tag provided${BLUE}"
+		echo1 "${RED}No tag provided${BLUE}"
 		askEnter
 		return
 	fi
-	echo "${BLUE}Will push as tooltwist/${app}"
+	echo1 "${BLUE}Will push as tooltwist/${app}"
 	
 	# Tag the image
-	echo ""
-	echo "${RED}$ docker tag ${app}-image tooltwist/${app}:${tag}${GREEN}"
+	echo1 ""
+	echo1 "${RED}$ docker tag ${app}-image tooltwist/${app}:${tag}${GREEN}"
 	              docker tag ${app}-image tooltwist/${app}:${tag}			
 	
 	# Push to Dockerhub		
-	echo ""
-	echo "${RED}$ docker push tooltwist/${app}:${tag}${GREEN}"
+	echo1 ""
+	echo1 "${RED}$ docker push tooltwist/${app}:${tag}${GREEN}"
 	              docker push tooltwist/${app}:${tag}
-	echo "${BLUE}"
+	echo1 "${BLUE}"
 }
 
 #
@@ -387,21 +393,24 @@ function pushToDockerHub {
 function tooltwistAppMenu {
 	app=$1
 	pwd
+
+	# Check we have a docker directory
+	mkdir -p deploy/docker
 	
-	# See if we have a build config
-	buildColor=${D}
-	[ -e build/tooltwist.js ] && buildColor=${B}
+#	# See if we have a build config
+#	buildColor=${D}
+#	[ -e build/tooltwist.js ] && buildColor=${B}
 	
 	# See if we have a Compose script
 	
 	
 	while true ; do
-		echo "${BLUE}"
-		echo "______________________________________________________"
-		echo ""
-		echo "	      TOOLTWIST APPLICATION ${app}"
-		echo "______________________________________________________"
-		echo ""
+		echo1 "${BLUE}"
+		echo1 "______________________________________________________"
+		echo1 ""
+		echo1 "	      TOOLTWIST APPLICATION ${app}"
+		echo1 "______________________________________________________"
+		echo1 ""
 
 
 		# Is a ToolTwist project
@@ -410,14 +419,14 @@ function tooltwistAppMenu {
 		haveConf=N
 
 		if [ -e deploy/docker/tooltwist.js ] ; then
-#			echo Found tooltwist.js
+#			echo1 Found tooltwist.js
 			haveConf=Y
 
 			# See if we have a build script
 			[ -e deploy/docker/build.sh ] && createBuildForCLI ${app}
 			mayBuild=Y
 		else
-#			echo Missing tooltwist.js
+#			echo1 Missing tooltwist.js
 			mayInitCLI=Y
 		fi
 		
@@ -429,13 +438,13 @@ function tooltwistAppMenu {
 		
 		
 		# Initialise the build with ToolTwist CLI
-		echo "	Create:"
-		echo "	  ${cInit}1. Initialise ToolTwist CLI${BLUE}"
-		echo "	  ${cEdit}2. Edit toolTwist.js${BLUE}"
-		echo "	  ${cRun}3. Run Designer${BLUE}"
-		echo "	  ${cBuild}4. Build Docker image${BLUE}"
-		echo "	  ${BLUE}5. Shell in docker directory${BLUE}"
-		echo ""
+		echo1 "	Create:"
+		echo1 "	  ${cInit}1. Initialise ToolTwist CLI${BLUE}"
+		echo1 "	  ${cEdit}2. Edit toolTwist.js${BLUE}"
+		echo1 "	  ${cRun}3. Run Designer${BLUE}"
+		echo1 "	  ${cBuild}4. Build Docker image${BLUE}"
+		echo1 "	  ${BLUE}5. Shell in docker directory${BLUE}"
+		echo1 ""
 
 
 cat << END
@@ -445,17 +454,21 @@ cat << END
 	  8. Push image to Docker hub
 
 	Run:
+	  10. Map application to a swarm
+	  11. Edit docker-compose.yml
+	  12. Start application
+	  13. Stop application
+	  14. Restart application
+	  15. Remove application
+
 	  9. View swarm
-	  10. Edit docker-compose.yml
-	  11. Start application
-	  12. Stop application
 
 	  s. Shell
 	  f. Finish with this App
 END
 
-		echo ''
-		echo 'Enter selection: \c'
+		echo1 ''
+		echon 'Enter selection: '
 		read ans
 	
 		case ${ans} in
@@ -511,18 +524,18 @@ function otherAppMenu {
 	
 	
 	while true ; do
-		echo "______________________________________________________"
-		echo ""
-		echo "	            APPLICATION ${app}"
-		echo "______________________________________________________"
-		echo ""
+		echo1 "______________________________________________________"
+		echo1 ""
+		echo1 "	            APPLICATION ${app}"
+		echo1 "______________________________________________________"
+		echo1 ""
 
 		# See what we're allowed to do.
 		mayEdit=N
 		mayBuild=N	
 		if [ -e deploy/docker/build.sh ] ; then
 			mayBuild=Y
-			echo Have build.sh
+			echo1 Have build.sh
 		fi
 		cEdit=${D}; [ ${mayEdit} == 'Y' ] && cEdit=${B};
 		cBuild=${D}; [ ${mayBuild} == 'Y' ] && cBuild=${B};
@@ -530,10 +543,10 @@ function otherAppMenu {
 		
 		# Initialise the build with ToolTwist CLI
 		
-echo "	Create:"
-echo "	  ${N}1. Edit build.sh${N}"
-echo "	  ${cBuild}2. Build Docker image${N}"
-echo ""
+echo1 "	Create:"
+echo1 "	  ${N}1. Edit build.sh${N}"
+echo1 "	  ${cBuild}2. Build Docker image${N}"
+echo1 ""
 
 
 cat << END
@@ -552,7 +565,7 @@ cat << END
 		
 END
 	
-		echo '	Enter selection: \c'
+		echon '	Enter selection: '
 		read ans
 	
 		case ${ans} in
@@ -589,22 +602,22 @@ END
 function maintainSwarms {
 	
 	while true ; do
-		echo "${BLUE}"
-		echo "______________________________________________________"
-		echo ""
-		echo "	                 MAINTAIN SWARMS"
-		echo "______________________________________________________"
-		echo ""
+		echo1 "${BLUE}"
+		echo1 "______________________________________________________"
+		echo1 ""
+		echo1 "	                 MAINTAIN SWARMS"
+		echo1 "______________________________________________________"
+		echo1 ""
 
 		# Show the existing swarms
-		echo "${GREEN}"
-#		echo swarms is ${SWARMS[@]}
-		echo '	Swarms:'
+		echo1 "${GREEN}"
+#		echo1 swarms is ${SWARMS[@]}
+		echo1 '	Swarms:'
 		for s in "${SWARMS[@]}"; do
-			echo "	  ${s}"
+			echo1 "	  ${s}"
 		done
-		echo ''
-		echo "${BLUE}"
+		echo1 ''
+		echo1 "${BLUE}"
 
 		cat << END
 	Menu:
@@ -615,9 +628,9 @@ function maintainSwarms {
 		
 END
 	
-		echo "	${BLUE}Swarm name or selection: ${RED}\c"
+		echon "	${BLUE}Swarm name or selection: ${RED}"
 		read ans
-		echo "${N}\c"
+		echon "${N}"
 	
 		case ${ans} in
 		1)
@@ -634,28 +647,27 @@ END
 			cnt=0
 			swarm=""
 			for n in ${SWARMS[@]} ; do
-				echo checking ${n}
-				if echo ${n} | grep "${ans}" ; then
-					echo found
+				if echo1 ${n} | grep "${ans}" ; then
 					swarm=${n}
 					cnt=`expr $cnt + 1`
 				fi
 			done
-			echo ""
+			echo1 ""
 			if [ ${cnt} -eq 0 ] ; then
-				echo "${RED}Swarm ${ans} not found${N}"
-				echo ""
-				echo ""
-				echo "Press ENTER to continue: \c"
+				echo1 "${RED}Swarm ${ans} not found${N}"
+				echo1 ""
+				echo1 ""
+				echon "Press ENTER to continue: "
 				return
 			elif [ ${cnt} -gt 1 ] ; then
-				echo "${RED}More than oen swarm matches ${ans}${N}"
-				echo ""
-				echo ""
-				echo "Press ENTER to continue: \c"
+				echo1 "${RED}More than oen swarm matches ${ans}${N}"
+				echo1 ""
+				echo1 ""
+				echon "Press ENTER to continue: "
 				return
 			fi
-			echo swarm is ${swarm}
+
+			# Work with this swarm
 			maintainSingleSwarm ${swarm}
 		esac
 	done
@@ -665,19 +677,28 @@ END
 #	Create a new swarm
 #
 function createSwarm {
+
+	# Check we have the required environment
+	if [ ! -r DO_ACCESS_TOKEN ] ; then
+		echo1 ""
+		echo1 "Cannot proceed without a file named DO_ACCESS_TOKEN"
+		askEnter
+		return
+	fi
 	
-	echo 'Name of swarm: \c'
+	# Ask for the name of the new swarm
+	echon 'Name of swarm: '
 	read name
 	
 	# Check the name is valid
 	[ -z ${name} ] && return
 	found=N
 	for n in ${SWARMS[@]} ; do
-		echo check $n
+		echo1 check $n
 		[ ${n} == ${name} ] && found=Y
 	done
 	if [ ${found} == 'Y' ] ; then
-		echo 'This name is already used'
+		echo1 'This name is already used'
 		return
 	fi
 	
@@ -687,23 +708,23 @@ function createSwarm {
 		# swarm with the docker name registry, and to get a
 		# tokan that can be used by the swarm nodes to
 		# communicate with each other.
-		echo 'Getting a token to identify the swarm...'
-		echo ''
-		echo '$ eval $(docker-machine env default)'
+		echo1 'Getting a token to identify the swarm...'
+		echo1 ''
+		echo1 '$ eval $(docker-machine env default)'
 		eval $(docker-machine env default)
 	
 		# Get the new swarm token
-		echo '$ docker pull swarm'
+		echo1 '$ docker pull swarm'
 		docker pull swarm
 		
-		echo '$ docker run --rm swarm create'
+		echo1 '$ docker run --rm swarm create'
 		SWARM_TOKEN=$(docker run --rm swarm create)
 		if [ $? -ne 0 ] ; then
-			echo 'Could not create swarm token'
+			echo1 'Could not create swarm token'
 			return
 		fi
-		echo ''
-		echo 'New swarm token is' ${SWARM_TOKEN}.
+		echo1 ''
+		echo1 'New swarm token is' ${SWARM_TOKEN}.
 	
 		#
 		# Create the swarm Master
@@ -715,7 +736,7 @@ function createSwarm {
 		#
 		#	Create one worker-only node
 		#
-		echo >&2 "Creating Docker Swarm cluster"
+		echo1 >&2 "Creating Docker Swarm cluster"
 		
 		set -x
 
@@ -748,7 +769,8 @@ function createSwarm {
 	)
 	
 	# Now maintain that swarm
-	maintainSingleSwarm ${swarm}
+	clear
+	maintainSingleSwarm ${name}
 }
 
 
@@ -760,16 +782,19 @@ function maintainSingleSwarm {
 	
 	
 	(
-		eval $(docker-machine env --swarm ${swarm}-swarm-master)
+		echo -e "${RED}$ eval \"$(docker-machine env --swarm ${swarm}-swarm-master)\"${BLUE}"
+set -x
+		                eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
+set +x
 	
 	
 		while true ; do
-			echo "${BLUE}"
-			echo "______________________________________________________"
-			echo ""
-			echo "	            MAINTAIN SWARM ${swarm}"
-			echo "______________________________________________________"
-			echo ""
+			echo1 "${BLUE}"
+			echo1 "______________________________________________________"
+			echo1 ""
+			echo1 "	            MAINTAIN SWARM ${swarm}"
+			echo1 "______________________________________________________"
+			echo1 ""
 			
 			listApps ${swarm}
 			
@@ -795,9 +820,9 @@ function maintainSingleSwarm {
 		
 END
 	
-			echo "	${BLUE}Enter selection: ${RED}\c"
+			echon "	${BLUE}Enter selection: ${RED}"
 			read ans
-			echo "${N}\c"
+			echon "${N}"
 	
 			case ${ans} in
 			1)
@@ -840,7 +865,7 @@ END
 				return
 				;;
 			*)
-				echo "${RED}Unknown command"
+				echo1 "${RED}Unknown command"
 				askEnter
 			esac
 		done
@@ -854,42 +879,42 @@ END
 function startProxy {
 	swarm=$1
 	clear
-	echo "${BLUE}"
-	echo ""
-	echo " Start Proxy for Swarm"
-	echo "_______________________"
+	echo1 "${BLUE}"
+	echo1 ""
+	echo1 " Start Proxy for Swarm"
+	echo1 "_______________________"
 	
 	(
 
 		# Set the environment
-		echo ''
-		echo "${RED}$ eval \"$(docker-machine env --swarm '${swarm}'-swarm-master)\"${BLUE}"
+		echo1 ''
+		echo1 "${RED}$ eval \"$(docker-machine env --swarm '${swarm}'-swarm-master)\"${BLUE}"
 		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 
 		# Copy certificates to the proxy server
-		echo ""
-		echo >&2 "Copying TLS config to swarm-proxy"
-		echo "$ docker-machine scp -r \"$DOCKER_CERT_PATH\" ${swarm}-swarm-proxy:/tmp/docker-certs${BLUE}"
+		echo1 ""
+		echo1 >&2 "Copying TLS config to swarm-proxy"
+		echo1 "$ docker-machine scp -r \"$DOCKER_CERT_PATH\" ${swarm}-swarm-proxy:/tmp/docker-certs${BLUE}"
 		docker-machine scp -r "$DOCKER_CERT_PATH" ${swarm}-swarm-proxy:/tmp/docker-certs
 	
 		# Prepare the environment
-		echo ""
-		echo >&2 "Prepare environment file for Compose:"
+		echo1 ""
+		echo1 >&2 "Prepare environment file for Compose:"
 		cat <<EOF | tee proxy.env >&2
 DOCKER_TLS_VERIFY=1
 DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
 DOCKER_CERT_PATH=/tmp/docker-certs
 constraint:type==proxy
 EOF
-		echo ""
+		echo1 ""
 		
 		# Start the nginx container, and limit it to one instance
-#		echo >&2 "Starting services via Docker Compose"
-		echo ''
-		echo "${RED}$ docker-compose -f docker-production-swarm-proxy.yml up -d${BLUE}"
+#		echo1 >&2 "Starting services via Docker Compose"
+		echo1 ''
+		echo1 "${RED}$ docker-compose -f docker-production-swarm-proxy.yml up -d${BLUE}"
 		docker-compose -f docker-production-swarm-proxy.yml up -d
-		echo ''
-		echo "${RED}$ docker-compose -f docker-production-swarm-proxy.yml scale proxy=1${BLUE}"
+		echo1 ''
+		echo1 "${RED}$ docker-compose -f docker-production-swarm-proxy.yml scale proxy=1${BLUE}"
 		docker-compose -f docker-production-swarm-proxy.yml scale proxy=1
 	)
 }
@@ -901,31 +926,31 @@ EOF
 function stopProxy {
 	swarm=$1
 	clear
-	echo "${BLUE}"
-	echo ""
-	echo " Stop Proxy for Swarm"
-	echo "______________________"
+	echo1 "${BLUE}"
+	echo1 ""
+	echo1 " Stop Proxy for Swarm"
+	echo1 "______________________"
 	
 	(
 		# Set the environment
-		echo ''
-		echo '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
+		echo1 ''
+		echo1 '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
 		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 	
 		# Prepare the environment
-		echo >&2 "Prepare environment file for Compose:"
+		echo1 >&2 "Prepare environment file for Compose:"
 		cat <<EOF | tee proxy.env >&2
 DOCKER_TLS_VERIFY=1
 DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
 DOCKER_CERT_PATH=/tmp/docker-certs
 constraint:type==proxy
 EOF
-		echo ""
+		echo1 ""
 		
 		# Start the nginx container, and limit it to one instance
-		echo >&2 "Starting services via Docker Compose"
-		echo ''
-		echo '$ docker-compose -f docker-production-swarm-proxy.yml stop'
+		echo1 >&2 "Starting services via Docker Compose"
+		echo1 ''
+		echo1 '$ docker-compose -f docker-production-swarm-proxy.yml stop'
 		docker-compose -f docker-production-swarm-proxy.yml stop
 	)
 }
@@ -937,31 +962,31 @@ EOF
 function restartProxy {
 	swarm=$1
 	clear
-	echo "${BLUE}"
-	echo ""
-	echo " Restart Proxy for Swarm"
-	echo "_________________________"
+	echo1 "${BLUE}"
+	echo1 ""
+	echo1 " Restart Proxy for Swarm"
+	echo1 "_________________________"
 	
 	(
 		# Set the environment
-		echo ''
-		echo '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
+		echo1 ''
+		echo1 '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
 		        eval "$(docker-machine env --swarm "${swarm}"-swarm-master)"
 	
 		# Prepare the environment
-		echo >&2 "Prepare environment file for Compose:"
+		echo1 >&2 "Prepare environment file for Compose:"
 		cat <<EOF | tee proxy.env >&2
 DOCKER_TLS_VERIFY=1
 DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
 DOCKER_CERT_PATH=/tmp/docker-certs
 constraint:type==proxy
 EOF
-		echo ""
+		echo1 ""
 		
 		# Start the nginx container, and limit it to one instance
-#		echo >&2 "Starting services via Docker Compose"
-		echo ''
-		echo '$ docker-compose -f docker-production-swarm-proxy.yml restart'
+#		echo1 >&2 "Starting services via Docker Compose"
+		echo1 ''
+		echo1 '$ docker-compose -f docker-production-swarm-proxy.yml restart'
 		        docker-compose -f docker-production-swarm-proxy.yml restart
 	)
 }
@@ -972,17 +997,17 @@ function showProxyConfig {
 	# Get the proxy container ID
 	proxyId=$(docker ps | grep -e "t4-swarm-proxy.*_proxy_1" | sed 's/ .*//')
 	if [ -z "${proxyId}" ] ; then
-		echo ""
-		echo "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
-		echo ""
+		echo1 ""
+		echo1 "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
+		echo1 ""
 		askEnter
 		return
 	fi
-	echo "${BLUE}"
-	echo "_____________________________________________________________________________${N}"
-	echo "$ docker exec ${proxyId} /bin/bash -c \"cat /etc/nginx/conf.d/default.conf\""
+	echo1 "${BLUE}"
+	echo1 "_____________________________________________________________________________${N}"
+	echo1 "$ docker exec ${proxyId} /bin/bash -c \"cat /etc/nginx/conf.d/default.conf\""
 	        docker exec ${proxyId} /bin/bash -c "cat /etc/nginx/conf.d/default.conf"
-	echo "${BLUE}"
+	echo1 "${BLUE}"
 }
 
 function followProxyLog {
@@ -992,24 +1017,24 @@ function followProxyLog {
 	# Get the proxy container ID
 	proxyId=$(docker ps | grep -e "t4-swarm-proxy.*_proxy_1" | sed 's/ .*//')
 	if [ -z "${proxyId}" ] ; then
-		echo ""
-		echo "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
-		echo ""
+		echo1 ""
+		echo1 "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
+		echo1 ""
 		askEnter
 		return
 	fi
-	echo "Proxy Id is ${proxyId}"
+	echo1 "Proxy Id is ${proxyId}"
 	
-	echo "${GREEN}Press Ctrl-C when you are finished viewing the logs${N}"
-	echo ""
+	echo1 "${GREEN}Press Ctrl-C when you are finished viewing the logs${N}"
+	echo1 ""
 	askEnter
 	
 	trap true SIGINT
 	clear
-	echo "$ docker logs -f ${proxyId}"
+	echo1 "$ docker logs -f ${proxyId}"
 	        docker logs -f ${proxyId}
 	trap - SIGINT
-	echo "${BLUE}"
+	echo1 "${BLUE}"
 }
 
 function listApps {
@@ -1020,15 +1045,15 @@ function listApps {
 		mkdir -p swarms/${swarm}
 		cd swarms/${swarm}
 	
-		echo ""
-		echo "	Applications for this swarm:"
-		echo "${GREEN}"
+		echo1 ""
+		echo1 "	Applications for this swarm:"
+		echo1 "${GREEN}"
 		for n in * ; do
 			if [ "${n}" != "*" ] ; then
-				[ ${n}/docker-compose.yml ] && echo "	  ${n}"
+				[ ${n}/docker-compose.yml ] && echo1 "	  ${n}"
 			fi
 		done
-		echo "${BLUE}"
+		echo1 "${BLUE}"
 	)
 }
 
@@ -1055,55 +1080,55 @@ function startApp {
 		label="Remove"
 		;;
 	esac
-	echo "${BLUE}"
-	echo ""
-	echo " ${label} Application"
-	echo "____________________"
+	echo1 "${BLUE}"
+	echo1 ""
+	echo1 " ${label} Application"
+	echo1 "____________________"
 	
 	# Ask the app name
 	listApps ${swarm}
 	
 #	app=askApp
-	echo ""
-	echo "Which application to ${label}? \c"
+	echo1 ""
+	echon "Which application to ${label}? "
 	read ans
 	
 	# Check the application exists
 	cnt=0
 	for n in swarms/${swarm}/* ; do
-		echo checking ${n}
+		echo1 checking ${n}
 		base=`basename ${n}`
-		if echo ${base} | grep "${ans}" ; then
-#			echo found
+		if echo1 ${base} | grep "${ans}" ; then
+#			echo1 found
 			app=${base}
 			cnt=`expr $cnt + 1`
 		fi
 	done
-	echo ""
+	echo1 ""
 	if [ ${cnt} -eq 0 ] ; then
-		echo "${RED}App ${ans} not found${N}"
-		echo ""
-		echo ""
-		echo "Press ENTER to continue: \c"
+		echo1 "${RED}App ${ans} not found${N}"
+		echo1 ""
+		echo1 ""
+		echon "Press ENTER to continue: "
 		return
 	elif [ ${cnt} -gt 1 ] ; then
-		echo "${RED}More than one app matches ${ans}${N}"
-		echo ""
-		echo ""
-		echo "Press ENTER to continue: \c"
+		echo1 "${RED}More than one app matches ${ans}${N}"
+		echo1 ""
+		echo1 ""
+		echon "Press ENTER to continue: "
 		return
 	fi
-	echo "${RED}Will ${label} ${app}${BLUE}"
+	echo1 "${RED}Will ${label} ${app}${BLUE}"
 	
 	(
 		cd swarms/${swarm}/${app}
-		echo '$ cd' `pwd`
+		echo1 '$ cd' `pwd`
 		
 		# Check we have the required files
 		if [ ! -r VIRTUAL_HOST -o ! -r VIRTUAL_PORT ] ; then
-			echo ""
-			echo "${RED}App ${app} needs to define files VIRTUAL_HOST and VIRTUAL_PORT"
-			echo "${N}"
+			echo1 ""
+			echo1 "${RED}App ${app} needs to define files VIRTUAL_HOST and VIRTUAL_PORT"
+			echo1 "${N}"
 			askEnter
 			clear
 			return
@@ -1112,52 +1137,132 @@ function startApp {
 		VIRTUAL_PORT=`cat VIRTUAL_PORT`
 		
 		if [ ! -f docker-compose.yml ] ; then
-			echo ""
-			echo "${RED}App ${app} needs to define docker-compose.yml"
-			echo "${N}"
+			echo1 ""
+			echo1 "${RED}App ${app} needs to define docker-compose.yml"
+			echo1 "${N}"
 			askEnter
 			clear
 			return
 		fi
 
 		# Set the environment for the swarm
-		echo ''
-		echo '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
+		echo1 ''
+		echo1 '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
 		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 
 		# Prepare the environment for the application
-		echo >&2 "Prepare environment file for Compose:"
+		echo1 >&2 "Prepare environment file for Compose:"
 		cat <<EOF | tee app.env >&2
 VIRTUAL_HOST=${VIRTUAL_HOST}
 VIRTUAL_PORT=${VIRTUAL_PORT}
 constraint:type==app
 EOF
-		echo ""
+		echo1 ""
 		
 		# Start the nginx container, and limit it to one instance
-		echo >&2 "Starting services via Docker Compose"
-		echo ''
-		echo '$ docker-compose '${op}
+		echo1 >&2 "Starting services via Docker Compose"
+		echo1 ''
+		echo1 '$ docker-compose '${op}
 		        docker-compose ${op}
 		if [ "${op}" == 'start' ] ; then
-			echo ''
-			echo '$ docker-compose scale app=1'
+			echo1 ''
+			echo1 '$ docker-compose scale app=1'
 			        docker-compose scale app=1
 		fi
 	)
 }
 
 
-#
-#	Get the names of the available swarms
-#
+# Get the names of the available swarms
 function getSwarmNames {
+	mkdir -p swarms
 	SWARMS=( `docker-machine ls | grep -e '^\S*-swarm-master ' | sed 's! .*!!' | sed 's!^\(.*\)-swarm-master$!\1!'` )	
 }
 
+# Get the application names
+function getAppNames {
+	mkdir -p apps
+	dirs=( apps/* )
+	[ ${dirs} == 'apps/*' ] && dirs=()
+
+	APPS=( )
+	for d in ${dirs[@]} ; do
+		d=`echo $d | sed 's!apps/!!'`
+		APPS+=( $d )
+	done
+}
+
+
+# Ask the user to select an application
+# (beware that all output from this function is considered part of the app name)
+function chooseApp {
+	echo >&2 -n -e "${BLUE}Application name: ${RED}"
+	read ans
+	echo >&2 -n -e "${BLUE}"
+
+	app=""
+	cnt=0
+	for a in ${APPS[@]} ; do
+		if echo ${a} | grep "${ans}" > /dev/null 2>&1 ; then
+			echo >&2 FOUND $a
+			app=${a}
+			cnt=`expr ${cnt} + 1`
+		fi
+	done
+
+	if [ ${cnt} -eq 0 ] ; then
+		echo >&2 -e "${RED}No matching app.${BLUE}"
+		askEnter
+		return 1
+	elif [ ${cnt} -eq 1 ] ; then
+		echo ${app}
+		return 0
+	else
+		echo >&2 -e "${RED}${cnt} apps match your selection (too many).${BLUE}"
+		askEnter
+		return 1
+	fi
+}
+
+function echo1 {
+	echo -e "$*"
+}
+
+function echon {
+	#echo $* \c
+	echo -e -n "$*"
+}
+
+function echoc {
+	color=$1; shift
+	case ${color} in
+	red)
+		echo -e -n "${RED}$*${N}"
+		;;
+	blue)
+		echo -e -n "${BLUE}$*${N}"
+		;;
+	green)
+		echo -e -n "${GREEN}$*${N}"
+		;;
+	black)
+		echo -e -n "${BLACK}$*${N}"
+		;;
+	aqua)
+		echo -e -n "${AQUA}$*${N}"
+		;;
+	purple)
+		echo -e -n "${PURPLE}$*${N}"
+		;;
+	orange)
+		echo -e -n "${ORANGE}$*${N}"
+		;;
+	esac
+}
+
 function askEnter {
-	echo ""
-	echo "${RED}Press ENTER to continue: \c${BLUE}"
+	echo >&2 ""
+	echo >&2 -e -n "${RED}Press ENTER to continue: ${BLUE}"
 	read ans
 }
 
@@ -1167,73 +1272,104 @@ function askEnter {
 #
 
 # Set the environment
-#echo Checking environment variables to access swarm
+#echo1 Checking environment variables to access swarm
 #eval $(docker-machine env --swarm swarm-masterz)
-echo "${RED}Initial environment:"
+clear
+echo -e "${RED}Initial environment:"
 env | grep DOCKER
-echo "${N}"
+echo -n -e "${BLUE}"
 
-echo Checking existing swarm names
 getSwarmNames
-echo done.
-echo ''
+getAppNames
 
 if [ ! -z ${1} ] ; then
 	case ${1} in
 	"--swarms" )
 		clear
-#		echo maintain swarms
+#		echo1 maintain swarms
 		maintainSwarms
 		exit 0
 		;;
 	*)
-		echo "${RED}Unknown parameter: ${1}"
-		echo "usage: ${0} [--swarms]"
-		echo "${N}"
+		echo1 "${RED}Unknown parameter: ${1}"
+		echo1 "usage: ${0} [--swarms]"
+		echo1 "${N}"
 		exit 1
 		;;
 	esac
 fi
 
 # Check we have the required directories
-mkdir -p apps
+mkdir -p apps swarms
+
+
+# Ok, start by showing the menu
 while true ; do
 	
 	# Show existing applications
-	echo "______________________________________________________"
-	echo ""
-	echo "            TOOLTWIST BUILDER MAIN MENU               "
-	echo "______________________________________________________"
-	echo ""
-	echo ""
-	echo "Applications:"
-	(
-		cd apps
-		for n in * ; do
-			echo "  $n"
-			#cat $n
-		done
-	)
+	echo1 "______________________________________________________"
+	echo1 "                                                      "
+	echo1 "                  STICK-IN-THE-HIVE                   "
+	echo1 "                                                      "
+	echo1 "           (the fastest way to make a swarm)          "
+	echo1 "______________________________________________________"
+	echo1 ""
+	echo1 ""
+
+	# Display the applications and swarms
+	printf "  %-30s %s\n" "Applications" "Swarms"
+	printf "  %-30s %s\n" "------------" "------"
+	echo -e -n "${GREEN}"
+	cnt=0
+	while true ; do
+		app=""; [ ${cnt} -lt ${#APPS[@]} ] && app=${APPS[$cnt]}
+		swarm=""; [ ${cnt} -lt ${#SWARMS[@]} ] && swarm=${SWARMS[$cnt]}
+		printf "   %-30s %s\n" ${app} ${swarm}
+		[ -z "${app}" -a -z "${swarm}" ] && break
+		cnt=`expr $cnt + 1`
+	done
+	echo -e -n "${BLUE}"
+	
 
 	# Ask the user what they would like to do
-	echo ''
+	echo1 ''
 	cat << END
 Commands:
-  1. Define new application.
-  2. Maintain swarms.
+  1. maintain application
+  2. maintain swarm
+
+  4. Maintain swarms.
+
+  5. Define new application.
+  6. Define new swarm
   s. Shell
   q. Quit
 END
 
-	echo ''
-	echo 'Enter application name or selection: \c'
+	echo1 ''
+	echon 'Selection: '
 	read ans
 
 	case "${ans}" in
 	1)
+		app=$(chooseApp)
+		if [ ! -z "${app}" ] ; then
+			(
+				cd apps/${app}
+				clear
+				if [ -d navpoints -a -d widgets ] ; then
+					tooltwistAppMenu ${app}
+				else
+					otherAppMenu ${app}
+				fi
+			)
+		fi
+		clear
+		;;
+	5)
 		defineApp
 		;;
-	2)
+	4)
 		maintainSwarms
 		;;
 #	3)
@@ -1243,40 +1379,17 @@ END
 		appShell
 		;;
 	q)
-		echo Bye.
+		echo1 Bye.
 		exit 0;
 		;;
 		
 	"")
 		# Null selection
-		echo ""
-		echo "Hey, you are supposed to enter something!"
+		echo1 ""
+		echo1 "${RED}Hey, you are supposed to enter something!${N}"
+		askEnter
+		clear
 		;;
 		
-	*)
-		# Look for an application name
-		(
-			cd apps
-			cnt=0
-			for n in ${ans}* ; do
-				cnt=`expr ${cnt} + 1`
-				app=$n
-			done
-			
-			if [ ${cnt} -eq 1 -a ${n} != "${ans}*" ] ; then
-				# Show the menu for this application
-				cd ${app}
-				if [ -d navpoints -a -d widgets ] ; then
-					tooltwistAppMenu ${app}
-				else
-					otherAppMenu ${app}
-				fi
-			elif [ ${cnt} -gt 1 ] ; then
-				echo "Please enter more characters, to specify a single app."
-			else
-				echo "No application matches ${ans}*"
-			fi
-		)
-		;;
 	esac
 done
