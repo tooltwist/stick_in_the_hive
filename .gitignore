@@ -1,4 +1,5 @@
 DO_ACCESS_TOKEN
+NOTIFY_ADDRESSES
 /apps/*
 /swarms/*
 /proxy.env

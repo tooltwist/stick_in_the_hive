@@ -2,6 +2,7 @@
 #
 #	Script for creating a Docker swarm
 #
+BIN=`dirname $0`
 
 # Color codes
 #http://bitmote.com/index.php?post/2012/11/19/Using-ANSI-Color-Codes-to-Colorize-Your-Bash-Prompt-on-Linux
@@ -66,22 +67,17 @@ function swarmPS {
 	(
 		echo1 ${BLUE}
 		clear
-		echo1 "Containers in Swarm ${swarm}"
-		echo1 "____________________________"
-		echo1 ""
-		echo1 ""
-		echo1 '$ eval $(docker-machine env --swarm '${swarm}'-swarm-master)'
-		eval $(docker-machine env --swarm ${swarm}-swarm-master)
-		env | grep DOCKER
-		echo1 ""
-		echo1 ${GREEN}
+		echo -e "Containers in Swarm ${swarm}"
+		echo -e "____________________________"
+		echo -e ""
+		echo -e ""
+		echo -e ${RED}'$ eval $(docker-machine env --swarm '${swarm}'-swarm-master)'${GREEN}
+		                 eval $(docker-machine env --swarm ${swarm}-swarm-master)
+		echo -e ""
+		echo -e ${RED}'$ docker ps'${GREEN}
+		echo -e ""
 		docker ps
-#		docker ps | grep -v jwilder/nginx-proxy
-		echo1 ${N}
-		echo1 ""
-		echo1 ""
-		echo1 ""
-		echo1 ""
+		echo -e ${BLUE}
 	)
 }
 
@@ -98,14 +94,13 @@ function swarmInfo {
 		echo1 "Info for Swarm ${swarm}"
 		echo1 "____________________________"
 		echo1 ""
-		echo -e "${RED}$ eval \"$(docker-machine env --swarm ${swarm}-swarm-master)\"${BLUE}"
-		                 eval "(docker-machine env --swarm ${swarm}-swarm-master)"
-		env | grep DOCKER
+		echo -e ${RED}'$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'${BLUE}
+		                 eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 		echo ""
 		echo -e "${RED}$ docker info"
-		echo -e "${GREEN}"
+		echo -e -n "${GREEN}"
 		        docker info
-		echo -e "${N}"
+		echo -e -n "${BLUE}"
 	)
 }
 
@@ -143,12 +138,13 @@ function initCLI {
 	echo1 ''
 	
 	# Get the repo name
-	echo1 '$ git remote -v'
+	#echo -e '${RED}$ git remote -v${BLUE}'
 	o=$(git remote -v)
 	repo=$(echo1 ${o} | sed 's!origin.\(.*\).(fetch).*!\1!')
-	echo1 repo is ${repo}.
+	echo1 "  repo is ${RED}${repo}${BLUE}"
 	branch=$(git status | grep '^On branch ' | sed 's!On branch !!')
-	echo1 branch is ${branch}
+	echo1 "  branch is ${RED}${branch}${BLUE}"
+
 
 	# Initialize tooltwist
 	(
@@ -157,18 +153,25 @@ function initCLI {
 		cd deploy/docker
 		echo1 '$ tooltwist init docker'
 		echo1 ${GREEN}
-		tooltwist init docker
+		trap true SIGINT
+		tooltwist init docker </dev/null
+echo1 ${RED}
+ps 
+		trap - SIGINT
 		echo1 ${BLUE}
 		
+askEnter
 		# Patch the config file
-		sed -i '' 's!"name" : "ttdemo"!"name" : "'${app}'"!' tooltwist.js
-		sed -i '' 's!https://github.com/tooltwist/ttdemo.git!'${repo}'!' tooltwist.js
-		sed -i '' 's!id: .my-project.,!id: "'${app}'",!' tooltwist.js
+		sed --in-place 's!"name" : "ttdemo"!"name" : "'${app}'"!' tooltwist.js
+		sed --in-place 's!https://github.com/tooltwist/ttdemo.git!'${repo}'!' tooltwist.js
+		sed --in-place 's!id: .my-project.,!id: "'${app}'",!' tooltwist.js
 	)
 	
+askEnter
 	#	Create a build script
 	createBuildForCLI
 	echo1 ${N}
+askEnter
 }
 
 #
@@ -220,7 +223,7 @@ function runDesigner {
 		echo1 '$ tooltwist designer'
 		echo1 "${GREEN}\n"
 		trap true SIGINT
-		tooltwist designer
+		tooltwist designer < /dev/null
 		trap - SIGINT
 		echo1 "${N}\n"
 	)
@@ -244,19 +247,15 @@ function doBuild {
 #	rm -rf deploy/docker/.tooltwist/webdesign-projects/${app}
 	
 	(
-		echo1 '$ cd deploy/docker'
-		cd deploy/docker
+		echo1 '$ cd ${HOME}/apps/${app}/deploy/docker'
 		echo1 "${RED}cd" `pwd` "${BLUE}"
+		cd deploy/docker
 		trap true SIGINT
-		echo1 "${RED}$ eval $(docker-machine env default)${BLUE}"
-		        eval $(docker-machine env default)
-		env | grep DOCKER
 
-		echo1 "${RED}$ tooltwist -n docker"
-		echo1 "${N}"
-		tooltwist docker
-		trap - SIGINT
+		echo1 "${RED}$ tooltwist -n docker${BLUE}"
+		               tooltwist docker < /dev/null
 		echo1 "${BLUE}\n"
+		trap - SIGINT
 		
 		# Display the images we now have
 		echo1 "${RED}$ docker images${GREEN}"
@@ -328,7 +327,6 @@ function viewLocalImage {
 	echo1 'Local Images'
 	echo1 '____________'
 	echo1 ''
-	#docker $(docker-machine config default) images | grep -e 'REPOSITORY' -e "${app}"
 	docker images | grep -e 'REPOSITORY' -e "${app}"
 	echo1 ${N}
 	echo1 ""
@@ -347,7 +345,6 @@ function viewDockerHubImage {
 	echo1 'Images at Docker Hub'
 	echo1 '____________________'
 	echo1 ''
-	docker $(docker-machine config default) search tooltwist/${app}
 	echo1 ${N}
 	echo1 ""
 	echo1 ""
@@ -360,9 +357,9 @@ function viewDockerHubImage {
 #
 function pushToDockerHub {
 	app=$1
-	echo1 ${GREEN}
-	docker $(docker-machine config default) images | grep -e 'REPOSITORY' -e "${app}"
-	echo1 ${N}
+	echo -e "${RED}docker images | grep -e REPOSITORY -e \"${app}\"${GREEN}"
+	               docker images | grep -e REPOSITORY -e "${app}"
+	echo -e ${BLUE}
 	
 	# Get the tag
 	echon "${BLUE}What tag should be used? ${RED}"
@@ -373,12 +370,12 @@ function pushToDockerHub {
 		askEnter
 		return
 	fi
-	echo1 "${BLUE}Will push as tooltwist/${app}"
+	echo1 "${BLUE}Will push as tooltwist/${app}:${tag}"
 	
 	# Tag the image
 	echo1 ""
-	echo1 "${RED}$ docker tag ${app}-image tooltwist/${app}:${tag}${GREEN}"
-	              docker tag ${app}-image tooltwist/${app}:${tag}			
+	echo1 "${RED}$ docker tag -f ${app}-image tooltwist/${app}:${tag}${GREEN}"
+	              docker tag -f ${app}-image tooltwist/${app}:${tag}			
 	
 	# Push to Dockerhub		
 	echo1 ""
@@ -476,7 +473,7 @@ END
 			[ "${mayInitCLI}" == 'Y' ] && initCLI ${app}
 			;;
 		2)
-			vi deploy/docker/tooltwist.js
+			#vi deploy/docker/tooltwist.js
 			[ "$haveConf" == 'Y' ] && editTooltwistJs ${app}
 			;;
 		3)
@@ -679,9 +676,11 @@ END
 function createSwarm {
 
 	# Check we have the required environment
-	if [ ! -r DO_ACCESS_TOKEN ] ; then
-		echo1 ""
-		echo1 "Cannot proceed without a file named DO_ACCESS_TOKEN"
+	doTokenFile=${BIN}/DO_ACCESS_TOKEN
+	if [ ! -r ${doTokenFile} ] ; then
+		echo -e ""
+		echo -e "${RED}Cannot proceed without ${doTokenFile}.${BLUE}"
+		echo -e "This file should contain your DigitalOcean access token"
 		askEnter
 		return
 	fi
@@ -694,42 +693,42 @@ function createSwarm {
 	[ -z ${name} ] && return
 	found=N
 	for n in ${SWARMS[@]} ; do
-		echo1 check $n
 		[ ${n} == ${name} ] && found=Y
 	done
 	if [ ${found} == 'Y' ] ; then
-		echo1 'This name is already used'
+		echo -e 'This name is already used'
+		askEnter
 		return
 	fi
 	
 	(
+
 		# Run the swarm image (only) on the current machine.
 		# NOTE: This container is used to register our new
 		# swarm with the docker name registry, and to get a
 		# tokan that can be used by the swarm nodes to
 		# communicate with each other.
-		echo1 'Getting a token to identify the swarm...'
-		echo1 ''
-		echo1 '$ eval $(docker-machine env default)'
-		eval $(docker-machine env default)
+		echo -e 'Getting a token to identify the swarm...'
+		echo -e ''
 	
 		# Get the new swarm token
-		echo1 '$ docker pull swarm'
+		echo -e "${RED}$ docker pull swarm${GREEN}"
 		docker pull swarm
 		
-		echo1 '$ docker run --rm swarm create'
+		echo -e "${RED}$ docker run --rm swarm create${GREEN}"
 		SWARM_TOKEN=$(docker run --rm swarm create)
 		if [ $? -ne 0 ] ; then
-			echo1 'Could not create swarm token'
+			echo -e "${RED}Could not create swarm token${BLUE}"
 			return
 		fi
-		echo1 ''
-		echo1 'New swarm token is' ${SWARM_TOKEN}.
+		echo -e ''
+		echo -e "${BLUE}New swarm token is ${SWARM_TOKEN}"
 	
 		#
 		# Create the swarm Master
 		#
-		DO_ACCESS_TOKEN=`cat DO_ACCESS_TOKEN`
+		echo "Loading DigitalOcean access token from ${doTokenFile}"
+		DO_ACCESS_TOKEN=$(cat ${doTokenFile})
 		REGION=sgp1
 		SIZE=2gb
 
@@ -737,7 +736,6 @@ function createSwarm {
 		#	Create one worker-only node
 		#
 		echo1 >&2 "Creating Docker Swarm cluster"
-		
 		set -x
 
 	  	docker-machine create --driver digitalocean \
@@ -769,6 +767,7 @@ function createSwarm {
 	)
 	
 	# Now maintain that swarm
+	askEnter
 	clear
 	maintainSingleSwarm ${name}
 }
@@ -780,13 +779,10 @@ function createSwarm {
 function maintainSingleSwarm {
 	swarm=$1
 	
-	
+	clear
 	(
-		echo -e "${RED}$ eval \"$(docker-machine env --swarm ${swarm}-swarm-master)\"${BLUE}"
-set -x
+		echo -e ${RED}'$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'${BLUE}
 		                eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
-set +x
-	
 	
 		while true ; do
 			echo1 "${BLUE}"
@@ -810,10 +806,13 @@ set +x
 	  6. View proxy config
 	  7. View proxy log
 	  
-	  8. Start application
-	  9. Stop application
-	  10. Restart application
-	  11. Remove application
+	  8. Map application to this swarm
+	  9. Edit docker-compose.yml
+
+	  10. Start application
+	  11. Stop application
+	  12. Restart application
+	  13. Remove application
   
 	  s. Shell
 	  f. Finish with this menu
@@ -832,31 +831,44 @@ END
 				swarmInfo ${swarm}
 				;;
 			3)
-				startProxy ${swarm}
+				proxyOp ${swarm} Start
 				;;
 			4)
-				stopProxy ${swarm}
+				proxyOp ${swarm} Stop
 				;;
 			5)
-				restartProxy ${swarm}
+				proxyOp ${swarm} Restart
 				;;
+
+			# Remove proxy container?
+
 			6)
 				showProxyConfig ${swarm}
 				;;
 			7)
 				followProxyLog ${swarm}
 				;;
+
+			# App definitions
 			8)
-				startApp ${swarm} ${ans} 'up -d'
+				mapAppToSwarm ${swarm}
 				;;
 			9)
-				startApp ${swarm} ${ans} stop
+				applicationOp ${swarm} composeYml
 				;;
+
+			# Start/stop/restart/rm application
 			10)
-				startApp ${swarm} ${ans} restart
+				applicationOp ${swarm} start
 				;;
 			11)
-				startApp ${swarm} ${ans} rm
+				applicationOp ${swarm} stop
+				;;
+			12)
+				applicationOp ${swarm} restart
+				;;
+			13)
+				applicationOp ${swarm} rm
 				;;
 			s)
 				swarmShell ${swarm}
@@ -865,8 +877,10 @@ END
 				return
 				;;
 			*)
-				echo1 "${RED}Unknown command"
+				echo1 "${RED}	Unknown command"
 				askEnter
+				clear
+				;;
 			esac
 		done
 	)
@@ -876,138 +890,179 @@ END
 #
 #	Start nginx-proxy on the swarm
 #
-function startProxy {
+function proxyOp {
 	swarm=$1
+	op=$2
+	
+	# Check the operation
+	case ${op} in
+	Start)
+		cmd="up -d"
+		;;
+	Stop)
+		cmd="stop"
+		;;
+	Restart)
+		cmd="restart"
+		;;
+	Remove)
+		cmd="rm"
+		;;
+	*)
+		echo "Unknown proxy operation ${op}."
+		askEnter
+		;;
+	esac
+
 	clear
 	echo1 "${BLUE}"
 	echo1 ""
-	echo1 " Start Proxy for Swarm"
+	echo1 " ${op} proxy for Swarm"
 	echo1 "_______________________"
 	
 	(
 
 		# Set the environment
-		echo1 ''
-		echo1 "${RED}$ eval \"$(docker-machine env --swarm '${swarm}'-swarm-master)\"${BLUE}"
-		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
+		echo ''
+		echo -e ${RED}'$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'${BLUE}
+		                 eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 
-		# Copy certificates to the proxy server
-		echo1 ""
-		echo1 >&2 "Copying TLS config to swarm-proxy"
-		echo1 "$ docker-machine scp -r \"$DOCKER_CERT_PATH\" ${swarm}-swarm-proxy:/tmp/docker-certs${BLUE}"
-		docker-machine scp -r "$DOCKER_CERT_PATH" ${swarm}-swarm-proxy:/tmp/docker-certs
+		# Perhaps copy certificates to the proxy server
+		if [ ${op} == "Start" ] ; then
+			echo -e ""
+			echo -e "Copying TLS config to swarm-proxy"
+			echo -e ${RED}'$ docker-machine scp -r "$DOCKER_CERT_PATH" '${swarm}'-swarm-proxy:/tmp/docker-certs'${GREEN}
+			              docker-machine scp -r "$DOCKER_CERT_PATH" ${swarm}-swarm-proxy:/tmp/docker-certs
+			echo -e -n ${BLUE}
+		fi
 	
 		# Prepare the environment
-		echo1 ""
-		echo1 >&2 "Prepare environment file for Compose:"
+		echo -e ""
+		echo -e ${RED}'Environment file for Compose:'${BLUE}
 		cat <<EOF | tee proxy.env >&2
 DOCKER_TLS_VERIFY=1
 DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
 DOCKER_CERT_PATH=/tmp/docker-certs
 constraint:type==proxy
 EOF
-		echo1 ""
+		echo ""
 		
-		# Start the nginx container, and limit it to one instance
-#		echo1 >&2 "Starting services via Docker Compose"
-		echo1 ''
-		echo1 "${RED}$ docker-compose -f docker-production-swarm-proxy.yml up -d${BLUE}"
-		docker-compose -f docker-production-swarm-proxy.yml up -d
-		echo1 ''
-		echo1 "${RED}$ docker-compose -f docker-production-swarm-proxy.yml scale proxy=1${BLUE}"
-		docker-compose -f docker-production-swarm-proxy.yml scale proxy=1
+		# Start/Stop/Restart/Remove the nginx container
+		echo -e ''
+		echo -e ${RED}'$ docker-compose -f '${BIN}'/docker-production-swarm-proxy.yml '${cmd}${GREEN}
+		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml ${cmd}
+		echo -e -n ${BLUE}
+
+		# If starting, constrain the proxy to just one container
+		if [ "${op}" == "Start" ] ; then
+			echo -e ''
+			echo -e ${RED}'$ docker-compose -f '${BIN}'/docker-production-swarm-proxy.yml scale proxy=1'${GREEN}
+						   docker-compose -f ${BIN}/docker-production-swarm-proxy.yml scale proxy=1
+			echo -e -n ${BLUE}
+		fi
 	)
 }
 
-
 #
-#	Stop nginx-proxy on the swarm
-#
-function stopProxy {
-	swarm=$1
+#	Send a backup by email
+function emailBackup {
 	clear
-	echo1 "${BLUE}"
-	echo1 ""
-	echo1 " Stop Proxy for Swarm"
-	echo1 "______________________"
-	
-	(
-		# Set the environment
-		echo1 ''
-		echo1 '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
-		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
-	
-		# Prepare the environment
-		echo1 >&2 "Prepare environment file for Compose:"
-		cat <<EOF | tee proxy.env >&2
-DOCKER_TLS_VERIFY=1
-DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
-DOCKER_CERT_PATH=/tmp/docker-certs
-constraint:type==proxy
-EOF
-		echo1 ""
-		
-		# Start the nginx container, and limit it to one instance
-		echo1 >&2 "Starting services via Docker Compose"
-		echo1 ''
-		echo1 '$ docker-compose -f docker-production-swarm-proxy.yml stop'
-		docker-compose -f docker-production-swarm-proxy.yml stop
-	)
-}
-
-
-#
-#	Restart nginx-proxy on the swarm
-#
-function restartProxy {
-	swarm=$1
+	echo -e -n "${BLACK}"
+	${BIN}/sendBackupEmail.sh
+	echo -e -n "${BLUE}"
+	askEnter
 	clear
-	echo1 "${BLUE}"
-	echo1 ""
-	echo1 " Restart Proxy for Swarm"
-	echo1 "_________________________"
-	
-	(
-		# Set the environment
-		echo1 ''
-		echo1 '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
-		        eval "$(docker-machine env --swarm "${swarm}"-swarm-master)"
-	
-		# Prepare the environment
-		echo1 >&2 "Prepare environment file for Compose:"
-		cat <<EOF | tee proxy.env >&2
-DOCKER_TLS_VERIFY=1
-DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
-DOCKER_CERT_PATH=/tmp/docker-certs
-constraint:type==proxy
-EOF
-		echo1 ""
-		
-		# Start the nginx container, and limit it to one instance
-#		echo1 >&2 "Starting services via Docker Compose"
-		echo1 ''
-		echo1 '$ docker-compose -f docker-production-swarm-proxy.yml restart'
-		        docker-compose -f docker-production-swarm-proxy.yml restart
-	)
 }
+
+
+
+##
+##	Stop nginx-proxy on the swarm
+##
+#function stopProxy {
+#	swarm=$1
+#	clear
+#	echo1 "${BLUE}"
+#	echo1 ""
+#	echo1 " Stop Proxy for Swarm"
+#	echo1 "______________________"
+#	
+#	(
+#		# Set the environment
+#		echo ''
+#		echo -e ${RED}'$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'${GREEN}
+#		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
+#	
+#		# Prepare the environment
+#		echo ""
+#		echo -e "${BLUE}Environment file for Compose:"
+#		cat <<EOF | tee proxy.env >&2
+#DOCKER_TLS_VERIFY=1
+#DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
+#DOCKER_CERT_PATH=/tmp/docker-certs
+#constraint:type==proxy
+#EOF
+#		echo ""
+#		
+#		# Start the nginx container, and limit it to one instance
+#		echo -e ${RED}'$ docker-compose -f docker-production-swarm-proxy.yml stop'${BLUE}
+#		                 docker-compose -f docker-production-swarm-proxy.yml stop
+#	)
+#}
+#
+#
+##
+##	Restart nginx-proxy on the swarm
+##
+#function restartProxy {
+#	swarm=$1
+#	clear
+#	echo1 "${BLUE}"
+#	echo1 ""
+#	echo1 " Restart Proxy for Swarm"
+#	echo1 "_________________________"
+#	
+#	(
+#		# Set the environment
+#		echo1 ''
+#		echo1 '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
+#		        eval "$(docker-machine env --swarm "${swarm}"-swarm-master)"
+#	
+#		# Prepare the environment
+#		echo1 >&2 "Prepare environment file for Compose:"
+#		cat <<EOF | tee proxy.env >&2
+#DOCKER_TLS_VERIFY=1
+#DOCKER_HOST=tcp://$(docker-machine ip ${swarm}-swarm-master):3376
+#DOCKER_CERT_PATH=/tmp/docker-certs
+#constraint:type==proxy
+#EOF
+#		echo1 ""
+#		
+#		# Start the nginx container, and limit it to one instance
+##		echo1 >&2 "Starting services via Docker Compose"
+#		echo1 ''
+#		echo1 '$ docker-compose -f docker-production-swarm-proxy.yml restart'
+#		        docker-compose -f docker-production-swarm-proxy.yml restart
+#	)
+#}
 
 function showProxyConfig {
 	swarm=$1
 
 	# Get the proxy container ID
-	proxyId=$(docker ps | grep -e "t4-swarm-proxy.*_proxy_1" | sed 's/ .*//')
+	proxyId=$(docker ps | grep -e "${swarm}-swarm-proxy.*_proxy_1" | sed 's/ .*//')
 	if [ -z "${proxyId}" ] ; then
-		echo1 ""
-		echo1 "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
-		echo1 ""
+		echo -e ""
+		echo -e "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
+		echo -e ""
 		askEnter
 		return
 	fi
-	echo1 "${BLUE}"
-	echo1 "_____________________________________________________________________________${N}"
-	echo1 "$ docker exec ${proxyId} /bin/bash -c \"cat /etc/nginx/conf.d/default.conf\""
-	        docker exec ${proxyId} /bin/bash -c "cat /etc/nginx/conf.d/default.conf"
-	echo1 "${BLUE}"
+	echo -e "${BLUE}"
+	echo -e "_____________________________________________________________________________${N}"
+	echo -e ${RED}'$ docker exec '${proxyId}' /bin/bash -c "cat /etc/nginx/conf.d/default.conf"'${GREEN}
+	                 docker exec ${proxyId} /bin/bash -c "cat /etc/nginx/conf.d/default.conf"
+	echo -e -n "${BLUE}"
 }
 
 function followProxyLog {
@@ -1015,26 +1070,28 @@ function followProxyLog {
 	
 
 	# Get the proxy container ID
-	proxyId=$(docker ps | grep -e "t4-swarm-proxy.*_proxy_1" | sed 's/ .*//')
+	proxyId=$(docker ps | grep -e "${swarm}-swarm-proxy.*_proxy_1" | sed 's/ .*//')
 	if [ -z "${proxyId}" ] ; then
-		echo1 ""
-		echo1 "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
-		echo1 ""
+		echo -e ""
+		echo -e "${RED}Could not get proxy id. Perhaps it isn't running?${BLUE}"
+		echo -e ""
 		askEnter
 		return
 	fi
-	echo1 "Proxy Id is ${proxyId}"
 	
-	echo1 "${GREEN}Press Ctrl-C when you are finished viewing the logs${N}"
-	echo1 ""
+	echo -e ""
+	echo -e ""
+	echo -e ""
+	echo -e "${GREEN}Press Ctrl-C when you are finished viewing the logs"
+	echo -e ""
 	askEnter
 	
-	trap true SIGINT
 	clear
-	echo1 "$ docker logs -f ${proxyId}"
+	trap true SIGINT
+	echo -e "$ docker logs -f ${proxyId}"
 	        docker logs -f ${proxyId}
 	trap - SIGINT
-	echo1 "${BLUE}"
+	echo -e -n "${BLUE}"
 }
 
 function listApps {
@@ -1045,90 +1102,239 @@ function listApps {
 		mkdir -p swarms/${swarm}
 		cd swarms/${swarm}
 	
-		echo1 ""
-		echo1 "	Applications for this swarm:"
-		echo1 "${GREEN}"
-		for n in * ; do
-			if [ "${n}" != "*" ] ; then
-				[ ${n}/docker-compose.yml ] && echo1 "	  ${n}"
-			fi
+		echo -e ""
+		getAppsMappedToSwarm ${swarm}
+		echo -e -n "${BLUE}"
+		printf "	%-15s %-15s\n" "Application" "Domain"
+		echo -e -n "${GREEN}"
+		for mapped in ${APPS_FOR_SWARM[@]} ; do
+			msg1=""; [ -r ${mapped}/VIRTUAL_HOST ] && msg1=`cat ${mapped}/VIRTUAL_HOST`
+			msg2=""; [ ! -r ${mapped}/docker-compose.yml ] && msg2="(missing docker-compose.yml)"
+			printf "	  %-15s %-15s %s\n" "${mapped}" "${msg1}" "${msg2}"
 		done
 		echo1 "${BLUE}"
 	)
 }
 
+function mapAppToSwarm {
+	swarm=$1
+
+	echo ""
+	echo "Available Apps:"
+	getAppsMappedToSwarm ${swarm}
+	available=( )
+	for app in ${APPS[@]} ; do
+		echo check $app
+		found=N
+		for mapped in ${APPS_FOR_SWARM[@]} ; do
+			echo against ${mapped}
+			[ ${mapped} = ${app} ] && found=Y
+		done
+		echo found is ${found}
+
+		if [ ${found} = 'N' ] ; then
+			printf "  %s\n" ${app}
+			available+=( ${app} )
+		else
+			printf "  %-20s %s\n" ${app} "(mapped)"
+		fi
+	done
+
+	echo -e -n "${BLUE}Which app would you like to map to swarm ${swarm}? ${RED}"
+	read ans
+
+	cnt=0
+	for a in ${available[@]} ; do
+		if echo ${a} | grep "${ans}" > /dev/null 2>&1 ; then
+			echo >&2 FOUND $a
+			app=${a}
+			cnt=`expr ${cnt} + 1`
+		fi
+	done
+
+	if [ ${cnt} -eq 0 ] ; then
+		echo >&2 -e "${RED}No matching app.${BLUE}"
+		askEnter
+		return 1
+	elif [ ${cnt} -gt 1 ] ; then
+		echo >&2 -e "${RED}${cnt} apps match your selection (too many).${BLUE}"
+		askEnter
+		return 1
+	fi
+
+echo "App is ${app}"
+	ls -l ${HOME}/apps/${app}
+
+	getDeploymentModesForApp ${app}
+	if [ ${#MODES_FOR_APP} -eq 0 ] ; then
+
+		# Perhaps create a default deployment mode
+		echo -e -n "App ${app} does not define any deployment modes. Create one [y/N]? "
+		read ans
+		if [ "${ans}" = "y" ] ; then
+
+			# Ask for details
+			echo -e -n "Mode name? "
+			read mode
+			[ ${mode} = "docker" ] && return
+			echo -e -n "Hostname? "
+			read HOSTNAME
+			echo -e -n "Port [8080]? "
+			read PORT
+			[ -z "${PORT}" ] && PORT=8080
+
+
+			# Create a default docker-compose.yml
+			mkdir -p "${HOME}/apps/${app}/deploy/${mode}"
+			ymlFile=${HOME}/apps/${app}/deploy/${mode}/docker-compose.yml
+			cat > ${ymlFile} << END
+app:
+  #build: .
+  image: tooltwist/${app}
+  ports:
+    - ":8080"
+  env_file:
+    - app.env
+END
+			echo ${HOSTNAME} > ${HOME}/apps/${app}/deploy/${mode}/VIRTUAL_HOST
+			echo ${PORT} > ${HOME}/apps/${app}/deploy/${mode}/VIRTUAL_PORT
+		else
+			# Don't create a default
+			return
+		fi
+
+	else
+
+		# Choose a deployment mode
+		ready=N
+		echo "Available modes:"
+		while [ ${ready} = N ] ; do
+			for mode in ${MODES_FOR_APP} ; do
+				echo "	  ${mode}"
+			done
+			echo -e -n "Mode: "
+			read ans
+			[ -z ${ans} ] && return
+
+			cnt=1
+			for m in ${MODES_FOR_APP} ; do
+				if grep -e "${ans}" ${m} ; then
+					mode=${m}
+					cnt=`expr ${cnt} + 1`
+				fi
+			done
+			if [ ${cnt} -lt 1 ] ; then
+				echo "No mode found"
+			elif [ ${cnt} -gt 1 ] ; then
+				echo "${cnt} modes match (too many)"
+			else
+				ready=Y
+			fi
+		done
+	fi
+
+	# Copy the mode to the swarm
+	modeDir=${HOME}/apps/${app}/deploy/${mode}
+	swarmDir=${HOME}/swarms/${swarm}/${app}
+	echo -e "${RED}$ mkdir -p ${swarmDir}${BLUE}"
+	                 mkdir -p ${swarmDir}
+	echo -e "${RED}$ cp ${modeDir}/* ${swarmDir}${BLUE}"
+	                 cp ${modeDir}/* ${swarmDir}
+
+}
 
 #
 #	Start nginx-proxy on the swarm
 #
-function startApp {
+function applicationOp {
+	echo "applicationOp($1, $2)"
 	swarm=$1
-	app=$2
-	op=$3
+	op=$2
+
 	clear
 	case ${op} in
 	start)
 		label="Start"
+		cmd="up -d"
 		;;
 	stop)
 		label="Stop"
+		cmd="start"
 		;;
 	restart)
 		label="Restart"
+		cmd="start"
 		;;
 	rm)
 		label="Remove"
+		cmd="start"
+		;;
+	composeYml)
+		label="Edit docker-compose.yml for"
 		;;
 	esac
 	echo1 "${BLUE}"
 	echo1 ""
-	echo1 " ${label} Application"
-	echo1 "____________________"
+	echo1 " ${label} application on swarm ${swarm}"
+	echo1 "__________________________________________________"
 	
 	# Ask the app name
-	listApps ${swarm}
+	#listApps ${swarm}
+	getAppsMappedToSwarm $swarm
+	echo -e "Mapped applications:"
+	echo -e ""
+	for app in ${APPS_FOR_SWARM[@]} ; do
+		echo -e "  ${GREEN}${app}${BLUE}"
+	done
 	
 #	app=askApp
-	echo1 ""
-	echon "Which application to ${label}? "
+	echo -e ""
+	echo -e -n "Which application to ${label}? ${RED}"
 	read ans
+	echo -e -n "${BLUE}"
+	[ -z "${ans}" ] && return
 	
 	# Check the application exists
 	cnt=0
-	for n in swarms/${swarm}/* ; do
-		echo1 checking ${n}
-		base=`basename ${n}`
-		if echo1 ${base} | grep "${ans}" ; then
-#			echo1 found
-			app=${base}
+	for a in ${APPS_FOR_SWARM[@]} ; do
+		if echo1 ${a} | grep "${ans}" ; then
+			app=${a}
 			cnt=`expr $cnt + 1`
 		fi
 	done
 	echo1 ""
 	if [ ${cnt} -eq 0 ] ; then
-		echo1 "${RED}App ${ans} not found${N}"
+		echo1 "${RED}App ${ans} not found${BLUE}"
 		echo1 ""
 		echo1 ""
 		echon "Press ENTER to continue: "
 		return
 	elif [ ${cnt} -gt 1 ] ; then
-		echo1 "${RED}More than one app matches ${ans}${N}"
+		echo1 "${RED}More than one app matches ${ans}${BLUE}"
 		echo1 ""
 		echo1 ""
 		echon "Press ENTER to continue: "
 		return
 	fi
-	echo1 "${RED}Will ${label} ${app}${BLUE}"
+	echo1 "${BLUE}${label} ${app}${BLUE}"
 	
+	# Maybe edit the config file
+	if [ "${op}" = "composeYml" ] ; then
+		vi ${HOME}/swarms/${swarm}/${app}/docker-compose.yml
+		clear
+		return
+	fi
+
+	# Perform a docker operation of the application
 	(
-		cd swarms/${swarm}/${app}
-		echo1 '$ cd' `pwd`
+		echo -e "${RED}$ cd ${HOME}/swarms/${swarm}/${app}${BLUE}"
+		                 cd ${HOME}/swarms/${swarm}/${app}
+		ls -l
 		
 		# Check we have the required files
 		if [ ! -r VIRTUAL_HOST -o ! -r VIRTUAL_PORT ] ; then
 			echo1 ""
-			echo1 "${RED}App ${app} needs to define files VIRTUAL_HOST and VIRTUAL_PORT"
-			echo1 "${N}"
+			echo1 "${RED}App ${app} needs to define files VIRTUAL_HOST and VIRTUAL_PORT${BLUE}"
 			askEnter
 			clear
 			return
@@ -1136,22 +1342,22 @@ function startApp {
 		VIRTUAL_HOST=`cat VIRTUAL_HOST`
 		VIRTUAL_PORT=`cat VIRTUAL_PORT`
 		
-		if [ ! -f docker-compose.yml ] ; then
-			echo1 ""
-			echo1 "${RED}App ${app} needs to define docker-compose.yml"
-			echo1 "${N}"
+		if [ ! -r "docker-compose.yml" ] ; then
+			echo -e ""
+			echo -e "${RED}Application ${app} needs to define docker-compose.yml${BLUE}"
 			askEnter
 			clear
 			return
 		fi
 
 		# Set the environment for the swarm
-		echo1 ''
-		echo1 '$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'
-		eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
+		echo -e ''
+		echo -e ${RED}'$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'${BLUE}
+		                 eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 
 		# Prepare the environment for the application
-		echo1 >&2 "Prepare environment file for Compose:"
+		echo -e ""
+		echo -e >&2 "Prepare environment file for Compose:"
 		cat <<EOF | tee app.env >&2
 VIRTUAL_HOST=${VIRTUAL_HOST}
 VIRTUAL_PORT=${VIRTUAL_PORT}
@@ -1160,14 +1366,14 @@ EOF
 		echo1 ""
 		
 		# Start the nginx container, and limit it to one instance
-		echo1 >&2 "Starting services via Docker Compose"
-		echo1 ''
-		echo1 '$ docker-compose '${op}
+		echo -e >&2 "Starting services via Docker Compose"
+		echo -e ''
+		echo -e ${RED}'$ docker-compose '${op}${BLUE}
 		        docker-compose ${op}
 		if [ "${op}" == 'start' ] ; then
-			echo1 ''
-			echo1 '$ docker-compose scale app=1'
-			        docker-compose scale app=1
+			echo -e ''
+			echo -e ${RED}'$ docker-compose scale app=1'${BLUE}
+			           docker-compose scale app=1
 		fi
 	)
 }
@@ -1192,6 +1398,31 @@ function getAppNames {
 	done
 }
 
+# Find the applications mapped to this swarm
+function getAppsMappedToSwarm {
+	swarm=$1
+	APPS_FOR_SWARM=( )
+	for n in ${HOME}/swarms/${swarm}/* ; do
+		dir=`basename ${n}`
+		if [ "${dir}" != "*" ] ; then
+			APPS_FOR_SWARM+=( ${dir} )
+		fi
+	done
+}
+
+# Find the deployment modes for an application
+function getDeploymentModesForApp {
+	app=$1
+
+	DEPLOYMENT_MODES=( )
+	mkdir -p ${HOME}/apps/${app}/deploy
+	for n in ${HOME}/apps/${app}/deploy/* ; do
+		echo ZZ ${n}
+		dir=`basename ${n}`
+		[ "${dir}" != '*' -a "${dir}" != 'docker' ] && DEPLOYMENT_MODES+=( ${dir} )
+	done
+echo modes is ${DEPLOYMENT_MODES[@]}
+}
 
 # Ask the user to select an application
 # (beware that all output from this function is considered part of the app name)
@@ -1219,6 +1450,45 @@ function chooseApp {
 		return 0
 	else
 		echo >&2 -e "${RED}${cnt} apps match your selection (too many).${BLUE}"
+		askEnter
+		return 1
+	fi
+}
+
+# Ask the user to select a swarm
+# (beware that all output from this function is considered part of the swarm name)
+function chooseSwarm {
+
+	# If there is only one swarm, use it
+	if [ ${#SWARMS[@]} -eq 1 ] ; then
+		echo ${SWARMS[0]}
+		return
+	fi
+
+	# Ask the swarm name
+	echo >&2 -n -e "${BLUE}Swarm name: ${RED}"
+	read ans
+	echo >&2 -n -e "${BLUE}"
+
+	app=""
+	cnt=0
+	for a in ${SWARMS[@]} ; do
+		if echo ${a} | grep "${ans}" > /dev/null 2>&1 ; then
+			echo >&2 FOUND $a
+			app=${a}
+			cnt=`expr ${cnt} + 1`
+		fi
+	done
+
+	if [ ${cnt} -eq 0 ] ; then
+		echo >&2 -e "${RED}No matching swarm${BLUE}"
+		askEnter
+		return 1
+	elif [ ${cnt} -eq 1 ] ; then
+		echo ${app}
+		return 0
+	else
+		echo >&2 -e "${RED}${cnt} swarms match your selection (too many).${BLUE}"
 		askEnter
 		return 1
 	fi
@@ -1270,6 +1540,7 @@ function askEnter {
 #
 #	Start here
 #
+HOME=`pwd`
 
 # Set the environment
 #echo1 Checking environment variables to access swarm
@@ -1338,10 +1609,11 @@ Commands:
   1. maintain application
   2. maintain swarm
 
-  4. Maintain swarms.
+  3. Define new application
+  4. Define new swarm
 
-  5. Define new application.
-  6. Define new swarm
+  5. Send backup by email
+  6. Show docker machines
   s. Shell
   q. Quit
 END
@@ -1366,15 +1638,26 @@ END
 		fi
 		clear
 		;;
-	5)
+	2)
+		swarm=$(chooseSwarm)
+		[ ! -z "${swarm}" ] && maintainSingleSwarm ${swarm}
+		clear
+		;;
+	3)
 		defineApp
+		getAppNames
 		;;
 	4)
-		maintainSwarms
+		createSwarm
 		;;
-#	3)
-#		addSwarmNode
-#		;;
+	5)
+		emailBackup
+		;;
+	6)
+		echo -e "${GREEN}"
+		docker-machine ls
+		echo -e "${BLUE}"
+		;;
 	s)
 		appShell
 		;;
