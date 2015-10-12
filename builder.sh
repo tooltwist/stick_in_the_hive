@@ -155,8 +155,6 @@ function initCLI {
 		echo1 ${GREEN}
 		trap true SIGINT
 		tooltwist init docker </dev/null
-echo1 ${RED}
-ps 
 		trap - SIGINT
 		echo1 ${BLUE}
 		
@@ -788,8 +786,9 @@ function maintainSingleSwarm {
 	Menu:
 	  1. Swarm Containers
 	  2. Swarm Info
+	  3. Login to app container
 	  
-	  3. Map application to this swarm
+	  4. Map application to this swarm
 
 	  Application
 	  11. Tail log
@@ -825,9 +824,12 @@ END
 			2)
 				swarmInfo ${swarm}
 				;;
+			3)
+				loginAppContainer ${swarm}
+				;;
 
 			# App definitions
-			3)
+			4)
 				mapAppToSwarm ${swarm}
 				;;
 
@@ -1306,6 +1308,9 @@ function applicationOp {
 	shell)
 		label="Shell in config directory of"
 		;;
+	login)
+		label="Login to container of"
+		;;
 	esac
 	echo1 "${BLUE}"
 	echo1 ""
@@ -1423,6 +1428,92 @@ EOF
 	)
 }
 
+# Display a list of containers for the current swarm
+# - also sets a variable named CONTAINER_IDS
+# - all output is send to stdout
+function showContainers {
+	CONTAINER_IDS=( )
+	printf "%3s %-15s %-25s %-15s %s\n" "" "CONTAINER ID" "IMAGE" "STATUS" "NAME" >&2
+	# Read one line at a time
+	cnt=1
+	IFS=$'\n'
+	lines=( $(docker ps --format "{{.ID}}:{{.Image}}:{{.Status}}" ) )
+
+	for l in ${lines[@]} ; do
+
+		# Split into separate fields
+		IFS=':' read -a flds <<< "$l"
+		id=${flds[0]}
+		image=${flds[1]}
+		uptime=${flds[2]}
+
+		# Get the name of the container
+		name=`docker inspect --format="{{.Node.Name}}{{.Name}}" ${id}`
+
+		# Display the container and add to the list
+		printf "%-3d %-15s %-25s %-15s %s\n" "${cnt}" "${id}" "${image}" "${uptime}" "${name}" >&2
+		CONTAINER_IDS+=( "${id}" )
+		cnt=`expr ${cnt} + 1`
+	done
+	unset IFS
+}
+
+# Choose a container
+# Note that all output is interpreted as the containerId
+function chooseContainer {
+
+	# Show a list of containers
+	showContainers
+	numContainers=${#CONTAINER_IDS[@]}
+
+	echo "" >&2
+	echo -e -n "${BLUE}Container: ${RED}" >&2
+	read ans
+	echo -e -n "${BLUE}" >&2
+
+	# Check an integer was entered
+	if [ "$ans" -eq "$ans" ] 2>/dev/null ; then
+		num=`expr ${ans} - 1`
+
+		if [ "${num}" -lt 1 -o "${num}" -ge "${numContainers}" ] ; then
+			echo -e "${RED}Incorrect selection." >&2
+			askEnter >&2
+		else
+			id=${CONTAINER_IDS[${num}]}
+			echo ${id}
+		fi
+	else
+		echo -e -n "Invalid selection." >&2
+		askEnter >&2
+		return
+	fi
+}
+
+
+# Login to a container within an app, within a swarm
+function loginAppContainer {
+	swarm=$1
+
+	clear
+	echo1 ${BLUE}
+	echo1 ""
+	echo1 Login to Container
+	echo1 '_________________'
+	echo1 ''
+
+	# Ask for a container ID
+	id=$( chooseContainer ${swarm} )
+	[ -z "${id}" ] && return
+
+	# Run the docker exec command
+	trap true SIGINT
+	echo -e ${RED}"$ docker exec -it ${id} /bin/bash"${BLACK}
+	echo ""
+	echo ""
+	                 docker exec -it ${id} /bin/bash
+	echo -e ${BLUE}
+	trap - SIGINT
+}
 
 # Get the names of the available swarms
 function getSwarmNames {
@@ -1448,9 +1539,11 @@ function getAppsMappedToSwarm {
 	swarm=$1
 	APPS_FOR_SWARM=( )
 	for n in ${HOME}/swarms/${swarm}/* ; do
-		dir=`basename ${n}`
-		if [ "${dir}" != "*" ] ; then
-			APPS_FOR_SWARM+=( ${dir} )
+		if [ -d "${n}" ] ; then
+			dir=`basename ${n}`
+			if [ "${dir}" != "*" ] ; then
+				APPS_FOR_SWARM+=( ${dir} )
+			fi
 		fi
 	done
 }
