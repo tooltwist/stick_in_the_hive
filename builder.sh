@@ -249,7 +249,7 @@ function doBuild {
 		         cd ${HOME}/apps/${app}/deploy/docker
 
 		trap true SIGINT
-		echo1 "${RED}$ tooltwist -n docker${AQUA}"
+		echo1 "${RED}$ tooltwist -n docker${BLACK}"
 		               tooltwist docker < /dev/null
 		echo1 "${BLUE}\n"
 		trap - SIGINT
@@ -260,6 +260,16 @@ function doBuild {
 		echo1 "${BLUE}"
 	)
 }
+
+#
+#	Flush the files from a previous ToolTwist build
+#
+function flushBuild {
+	echo -e ${RED}"$ rm -rf ${HOME}/apps/${app}/deploy/docker/.tooltwist"${GREEN}
+			         rm -rf ${HOME}/apps/${app}/deploy/docker/.tooltwist
+	askEnter
+}
+	
 
 #
 #	Start a shell in the application's deploy directory
@@ -437,15 +447,16 @@ function tooltwistAppMenu {
 		echo1 "	  ${cEdit}2. Edit toolTwist.js${BLUE}"
 		echo1 "	  ${cRun}3. Run Designer${BLUE}"
 		echo1 "	  ${cBuild}4. Build Docker image${BLUE}"
-		echo1 "	  ${BLUE}5. Shell in docker directory${BLUE}"
+		echo1 "	  ${cBuild}5. Flush previous build${BLUE}"
+		echo1 "	  ${BLUE}6. Shell in docker directory${BLUE}"
 		echo1 ""
 
 
 cat << END
 	Publish:
-	  6. Show image on this machine
-	  7. Show image on Docker Hub
-	  8. Push image to Docker hub
+	  7. Show image on this machine
+	  8. Show image on Docker Hub
+	  9. Push image to Docker hub
 
 	  s. Shell
 	  f. Finish with this App
@@ -470,15 +481,18 @@ END
 			[ "$mayBuild" == 'Y' ] && doBuild ${app}
 			;;
 		5)
-			appDockerDirShell ${app}
+			[ "$mayBuild" == 'Y' ] && flushBuild ${app}
 			;;
 		6)
-			viewLocalImage ${app}
+			appDockerDirShell ${app}
 			;;
 		7)
-			viewDockerHubImage ${app}
+			viewLocalImage ${app}
 			;;
 		8)
+			viewDockerHubImage ${app}
+			;;
+		9)
 			pushToDockerHub ${app}
 			;;
 		s)
@@ -585,6 +599,7 @@ END
 #
 function maintainSwarms {
 	
+	# Loop around, allowing menu selections
 	while true ; do
 		echo1 "${BLUE}"
 		echo1 "______________________________________________________"
@@ -765,7 +780,11 @@ function createSwarm {
 #
 function maintainSingleSwarm {
 	swarm=$1
-	
+
+	# Optional file to contain a "message of the day"
+	msgFile=${HOME}/swarms/${swarm}/MOTD
+
+	# Loop around, allowing menu selections
 	clear
 	(
 		echo -e ${RED}'$ eval "$(docker-machine env --swarm '${swarm}'-swarm-master)"'${BLUE}
@@ -776,6 +795,11 @@ function maintainSingleSwarm {
 			echo1 "______________________________________________________"
 			echo1 ""
 			echo1 "	            MAINTAIN SWARM ${swarm}"
+			if [ -r ${msgFile} ] ; then
+				echo -e -n "${PURPLE}"
+				cat ${msgFile}
+				echo -e -n "${BLUE}"
+			fi
 			echo1 "______________________________________________________"
 			echo1 ""
 			
@@ -792,10 +816,10 @@ function maintainSingleSwarm {
 
 	  Application
 	  11. Tail log
-	  12. Start
-	  13. Stop
+	  12. Pull from Docker Hub and Start
+	  13. Temporarily Stop
 	  14. Restart
-	  15. Stop and remove container
+
 	  16. Edit docker-compose.yml
 	  17. Shell in config directory
   
@@ -846,9 +870,9 @@ END
 			14)
 				applicationOp ${swarm} restart
 				;;
-			15)
-				applicationOp ${swarm} rm
-				;;
+#			15)
+#				applicationOp ${swarm} rm
+#				;;
 			16)
 				applicationOp ${swarm} composeYml
 				;;
@@ -861,7 +885,7 @@ END
 				followProxyLog ${swarm}
 				;;
 			92)
-				proxyOp ${swarm} Start
+				proxyOp ${swarm} "Pull and Start"
 				;;
 			93)
 				proxyOp ${swarm} Stop
@@ -869,9 +893,9 @@ END
 			94)
 				proxyOp ${swarm} Restart
 				;;
-			95)
-				proxyOp ${swarm} Remove
-				;;
+#			95)
+#				proxyOp ${swarm} Remove
+#				;;
 			96)
 				showProxyConfig ${swarm}
 				;;
@@ -902,28 +926,6 @@ END
 function proxyOp {
 	swarm=$1
 	op=$2
-	
-	# Check the operation
-	case ${op} in
-	Start)
-		cmd="up -d"
-		;;
-	Stop)
-		cmd="stop"
-		;;
-	Restart)
-		cmd="restart"
-		;;
-	Remove)
-		cmd="rm"
-		;;
-	Shell)
-		;;
-	*)
-		echo "Unknown proxy operation ${op}."
-		askEnter
-		;;
-	esac
 
 	clear
 	echo1 "${BLUE}"
@@ -958,19 +960,60 @@ constraint:type==proxy
 EOF
 		echo ""
 
-		# Perhaps do a non-Compose operation
-		if [ "${op}" = "Shell" ] ; then
-			container=$(docker ps | grep "${swarm}-swarm-proxy/stickinthehive_proxy_1" | sed 's!\s.*!!')
-			if [ ! -z ${container} ] ; then
-				trap true SIGINT
-				echo -e "${RED}$ docker exec -it ${container} /bin/bash${PURPLE}"
-				           docker exec -it ${container} /bin/bash
-				trap - SIGINT
-				echo -e -n "${BLUE}"
-			fi
-			return
+echo OP IS ${op}.
+
+	# Check the operation
+	case ${op} in
+	"Pull and Start")
+		# Start/Stop/Restart/Remove the nginx container
+		echo -e ''
+		echo -e ${RED}"$ docker-compose -f ${BIN}/docker-production-swarm-proxy.yml rm"${GREEN}
+		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml rm
+		echo -e ${RED}"$ docker-compose -f ${BIN}/docker-production-swarm-proxy.yml pull"${GREEN}
+		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml pull
+		echo -e ${RED}"$ docker-compose -f ${BIN}/docker-production-swarm-proxy.yml up -d"${GREEN}
+		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml up -d
+		echo -e -n ${BLUE}
+		;;
+	Stop)
+		# Start/Stop/Restart/Remove the nginx container
+		echo -e ''
+		echo -e ${RED}"$ docker-compose -f ${BIN}/docker-production-swarm-proxy.yml stop"${GREEN}
+		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml stop
+		echo -e -n ${BLUE}
+		;;
+	Restart)
+		# Start/Stop/Restart/Remove the nginx container
+		echo -e ''
+		echo -e ${RED}"$ docker-compose -f ${BIN}/docker-production-swarm-proxy.yml restart"${GREEN}
+		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml restart
+		echo -e -n ${BLUE}
+		;;
+
+#	Remove)
+#		cmd="rm"
+#		;;
+
+	Shell)
+		container=$(docker ps | grep "${swarm}-swarm-proxy/stickinthehive_proxy_1" | sed 's!\s.*!!')
+		if [ ! -z ${container} ] ; then
+			trap true SIGINT
+			echo -e "${RED}$ docker exec -it ${container} /bin/bash${PURPLE}"
+					   docker exec -it ${container} /bin/bash
+			trap - SIGINT
+			echo -e -n "${BLUE}"
 		fi
-		
+		return
+		;;
+	*)
+		echo "Unknown proxy operation ${op}."
+		askEnter
+		;;
+	esac
+
+
+return
+#ZZZZZ
 		# Start/Stop/Restart/Remove the nginx container
 		echo -e ''
 		echo -e ${RED}'$ docker-compose -f '${BIN}'/docker-production-swarm-proxy.yml '${cmd}${GREEN}
@@ -1134,7 +1177,7 @@ function listApps {
 		for mapped in ${APPS_FOR_SWARM[@]} ; do
 			msg1=""; [ -r ${mapped}/VIRTUAL_HOST ] && msg1=`cat ${mapped}/VIRTUAL_HOST`
 			msg2=""; [ ! -r ${mapped}/docker-compose.yml ] && msg2="(missing docker-compose.yml)"
-			printf "	  %-15s %-15s %s\n" "${mapped}" "${msg1}" "${msg2}"
+			printf "	%-15s %-15s %s\n" "${mapped}" "${msg1}" "${msg2}"
 		done
 		echo1 "${BLUE}"
 	)
@@ -1413,19 +1456,76 @@ VIRTUAL_PORT=${VIRTUAL_PORT}
 constraint:type==app
 EOF
 		echo1 ""
-		
-		# Perform the docker-compose operation
-		echo -e ''
-		echo -e ${RED}'$ docker-compose '${op}${BLUE}
-		        docker-compose ${op}
 
-		# Limit the number of instances, if starting
-		if [ "${op}" == 'start' ] ; then
+
+
+
+
+		case ${op} in
+		start)
+			label="Start"
+			# Perform the docker-compose operation
 			echo -e ''
-			echo -e ${RED}'$ docker-compose scale app=1'${BLUE}
-			           docker-compose scale app=1
-		fi
-	)
+			echo -e ${RED}"$ docker-compose stop"${GREEN}
+					         docker-compose stop
+			echo ""
+			echo -e ${RED}"$ docker-compose rm"${GREEN}
+					         docker-compose rm
+			echo -e ${RED}"$ docker-compose pull"${GREEN}
+					         docker-compose pull
+			echo ""
+			echo -e ${RED}"$ docker-compose up -d"${GREEN}
+					         docker-compose up -d
+
+			# Limit the number of instances, if starting
+			echo -e ''
+			echo -e ${RED}"$ docker-compose scale app=1"${BLUE}
+					         docker-compose scale app=1
+			;;
+
+		stop)
+			label="Stop"
+			echo -e ''
+			echo -e ${RED}"$ docker-compose stop"${BLUE}
+					         docker-compose ${op}
+			;;
+
+		restart)
+			label="Restart"
+			echo -e ''
+			echo -e ${RED}"$ docker-compose restart"${BLUE}
+					         docker-compose ${op}
+			;;
+
+		composeYml)
+			label="Edit docker-compose.yml for"
+			echo -e ''
+			echo -e ${RED}'$ docker-compose '${op}${BLUE}
+					         docker-compose ${op}
+			;;
+
+		logs)
+			label="View log for"
+			cmd="logs"
+			echo -e ''
+			echo -e ${RED}'$ docker-compose '${op}${BLUE}
+					         docker-compose ${op}
+			;;
+
+		shell)
+			label="Shell in config directory of"
+			echo -e ''
+			echo -e ${RED}'$ docker-compose '${op}${BLUE}
+					         docker-compose ${op}
+			;;
+
+		login)
+			label="Login to container of"
+			echo -e ''
+			echo -e ${RED}'$ docker-compose '${op}${BLUE}
+					         docker-compose ${op}
+			;;
+		esac
 }
 
 # Display a list of containers for the current swarm
@@ -1475,7 +1575,7 @@ function chooseContainer {
 	if [ "$ans" -eq "$ans" ] 2>/dev/null ; then
 		num=`expr ${ans} - 1`
 
-		if [ "${num}" -lt 1 -o "${num}" -ge "${numContainers}" ] ; then
+		if [ "${num}" -lt 0 -o "${num}" -ge "${numContainers}" ] ; then
 			echo -e "${RED}Incorrect selection." >&2
 			askEnter >&2
 		else
@@ -1721,20 +1821,26 @@ while true ; do
 	echo1 "                  STICK-IN-THE-HIVE                   "
 	echo1 "                                                      "
 	echo1 "           (the fastest way to make a swarm)          "
+	if [ -r MOTD ] ; then
+		echo -e -n ${PURPLE}
+		cat MOTD
+		echo -e -n ${BLUE}
+	fi
 	echo1 "______________________________________________________"
 	echo1 ""
 	echo1 ""
 
 	# Display the applications and swarms
-	printf "  %-30s %s\n" "Applications" "Swarms"
-	printf "  %-30s %s\n" "------------" "------"
+	getAppNames
+	printf "  %-30s %s\n" "Swarms" "Applications"
+	printf "  %-30s %s\n" "------" "------------"
 	echo -e -n "${GREEN}"
 	cnt=0
 	while true ; do
-		app=""; [ ${cnt} -lt ${#APPS[@]} ] && app=${APPS[$cnt]}
 		swarm=""; [ ${cnt} -lt ${#SWARMS[@]} ] && swarm=${SWARMS[$cnt]}
-		printf "   %-30s %s\n" ${app} ${swarm}
+		app=""; [ ${cnt} -lt ${#APPS[@]} ] && app=${APPS[$cnt]}
 		[ -z "${app}" -a -z "${swarm}" ] && break
+		printf "   %-30s %s\n" "${swarm}" "${app}"
 		cnt=`expr $cnt + 1`
 	done
 	echo -e -n "${BLUE}"
@@ -1744,14 +1850,14 @@ while true ; do
 	echo1 ''
 	cat << END
 Commands:
-  1. maintain application
-  2. maintain swarm
+  1. maintain a swarm
+  2. maintain an application
 
-  3. Define new application
-  4. Define new swarm
+  3. Show docker machines
+  4. Send backup by email
+  5. Define new application
+  6. Define new swarm
 
-  5. Send backup by email
-  6. Show docker machines
   s. Shell
   q. Quit
 END
@@ -1762,6 +1868,11 @@ END
 
 	case "${ans}" in
 	1)
+		swarm=$(chooseSwarm)
+		[ ! -z "${swarm}" ] && maintainSingleSwarm ${swarm}
+		clear
+		;;
+	2)
 		app=$(chooseApp)
 		if [ ! -z "${app}" ] ; then
 			(
@@ -1776,25 +1887,20 @@ END
 		fi
 		clear
 		;;
-	2)
-		swarm=$(chooseSwarm)
-		[ ! -z "${swarm}" ] && maintainSingleSwarm ${swarm}
-		clear
-		;;
 	3)
-		defineApp
-		getAppNames
-		;;
-	4)
-		createSwarm
-		;;
-	5)
-		emailBackup
-		;;
-	6)
 		echo -e "${GREEN}"
 		docker-machine ls
 		echo -e "${BLUE}"
+		;;
+	4)
+		emailBackup
+		;;
+	5)
+		defineApp
+		getAppNames
+		;;
+	6)
+		createSwarm
 		;;
 	s)
 		appShell
