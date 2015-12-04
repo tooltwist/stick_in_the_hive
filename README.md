@@ -7,6 +7,7 @@ This project provides scripts to:
 * Applications: build and publish Docker images
 * Deploy: run applications on swarms
 
+![stick-in-the-hive](https://cloud.githubusercontent.com/assets/848697/10541695/9d901ac6-7445-11e5-8feb-db735b0a795f.png)
 
 #### Team Based Control of Swarms
 These scripts are normally run within a Docker container, co-located with your swarms.
