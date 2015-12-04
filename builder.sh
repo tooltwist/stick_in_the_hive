@@ -818,17 +818,17 @@ function maintainSingleSwarm {
 	  11. Tail log
 	  12. Pull from Docker Hub and Start
 	  13. Temporarily Stop
-	  14. Restart
+	  14. Start again
 
 	  16. Edit docker-compose.yml
 	  17. Shell in config directory
   
 	  Proxy
 	  91. Tail log
-	  92. Start
-	  93. Stop
-	  94. Restart
-	  95. Remove container
+	  92. Pull and Start proxy
+	  93. Stop proxy
+	  94. Start proxy again
+	  95. Remove proxy container
 	  96. View proxy config
 	  97. Login to proxy container
   
@@ -931,7 +931,7 @@ function proxyOp {
 	echo1 "${BLUE}"
 	echo1 ""
 	echo1 " ${op} proxy for Swarm"
-	echo1 "_______________________"
+	echo1 "__________________________________________________"
 	
 	(
 
@@ -941,11 +941,11 @@ function proxyOp {
 		                 eval "$(docker-machine env --swarm ${swarm}-swarm-master)"
 
 		# Perhaps copy certificates to the proxy server
-		if [ ${op} == "Start" ] ; then
+		if [ "${op}" == "Pull and Start" ] ; then
 			echo -e ""
 			echo -e "Copying TLS config to swarm-proxy"
-			echo -e ${RED}'$ docker-machine scp -r "$DOCKER_CERT_PATH" '${swarm}'-swarm-proxy:/tmp/docker-certs'${GREEN}
-			              docker-machine scp -r "$DOCKER_CERT_PATH" ${swarm}-swarm-proxy:/tmp/docker-certs
+			echo -e ${RED}'$ docker-machine scp -r "$DOCKER_CERT_PATH" '${swarm}'-swarm-proxy/:/tmp/docker-certs'${GREEN}
+			              docker-machine scp -r "$DOCKER_CERT_PATH" ${swarm}-swarm-proxy/:/tmp/docker-certs/
 			echo -e -n ${BLUE}
 		fi
 	
@@ -985,8 +985,9 @@ echo OP IS ${op}.
 	Restart)
 		# Start/Stop/Restart/Remove the nginx container
 		echo -e ''
-		echo -e ${RED}"$ docker-compose -f ${BIN}/docker-production-swarm-proxy.yml restart"${GREEN}
-		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml restart
+		# Note we use start, not restart
+		echo -e ${RED}"$ docker-compose -f ${BIN}/docker-production-swarm-proxy.yml start"${GREEN}
+		                 docker-compose -f ${BIN}/docker-production-swarm-proxy.yml start
 		echo -e -n ${BLUE}
 		;;
 
@@ -1493,8 +1494,9 @@ EOF
 		restart)
 			label="Restart"
 			echo -e ''
-			echo -e ${RED}"$ docker-compose restart"${BLUE}
-					         docker-compose ${op}
+			# Note we use start, not restart
+			echo -e ${RED}"$ docker-compose start"${BLUE}
+					         docker-compose start
 			;;
 
 		composeYml)
@@ -1526,6 +1528,7 @@ EOF
 					         docker-compose ${op}
 			;;
 		esac
+	)
 }
 
 # Display a list of containers for the current swarm
@@ -1840,7 +1843,7 @@ while true ; do
 		swarm=""; [ ${cnt} -lt ${#SWARMS[@]} ] && swarm=${SWARMS[$cnt]}
 		app=""; [ ${cnt} -lt ${#APPS[@]} ] && app=${APPS[$cnt]}
 		[ -z "${app}" -a -z "${swarm}" ] && break
-		printf "   %-30s %s\n" "${swarm}" "${app}"
+		printf "  %-30s %s\n" "${swarm}" "${app}"
 		cnt=`expr $cnt + 1`
 	done
 	echo -e -n "${BLUE}"
